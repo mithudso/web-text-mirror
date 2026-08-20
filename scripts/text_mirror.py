@@ -625,6 +625,9 @@ def main():
 
     DEFAULT_OUT_FILE = args.out
 
+    if not args.seeds and not args.serve and not args.out:
+        args.serve = True
+
     log_dir = os.path.dirname(args.out) if args.out else "text-mirror"
     os.makedirs(log_dir or ".", exist_ok=True)
     LOG_FILE = os.path.join(log_dir or ".", "crawl.log")

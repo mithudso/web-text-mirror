@@ -3,8 +3,8 @@
 ## Start
 
 ```bash
-python3 scripts/text_mirror.py --serve
-# → "Started Chrome extension server on http://127.0.0.1:8765"
+python3 scripts/text_mirror.py --serve     # bare `python3 scripts/text_mirror.py`
+# → "Started Chrome extension server on http://127.0.0.1:8765"   # does the same
 ```
 
 Load the extension once: `chrome://extensions` → Developer mode → Load unpacked →

@@ -44,7 +44,7 @@ python scripts/text_mirror.py https://wiki.example.org/
 python scripts/text_mirror.py https://wiki.example.org/ https://forum.example.org/ \
   --out out/mirror.md --max-depth 3 --delay 1.5
 
-# serve the Chrome-extension API only
+# serve the Chrome-extension API only (running with no arguments does the same)
 python scripts/text_mirror.py --serve
 ```
 
@@ -56,7 +56,7 @@ python scripts/text_mirror.py --serve
 | `--delay` | `CRAWL_DELAY` | `1.0` | seconds between requests (global, per-request) |
 | `--req-per-sec` | — | `0` | requests/sec; overrides `--delay` when > 0 |
 | `--max-depth` | `MAX_DEPTH` | `0` | per-site depth limit in hops; `0` = unlimited |
-| `--serve` | — | off | local HTTP API for the Chrome extension on 127.0.0.1:8765 |
+| `--serve` | — | on when no args given | local HTTP API for the Chrome extension on 127.0.0.1:8765; running with no seeds/--out/--serve defaults to serve mode |
 
 A sibling `crawl.log` is written next to `--out` with progress lines (every ~30 s
 state save) and any `robots-skip` / `no-content` / `fetch-error` notes.

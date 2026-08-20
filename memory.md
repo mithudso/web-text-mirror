@@ -1,5 +1,17 @@
 # web-text-mirror Memory Log
 
+## v1.1 - 2026-08-20
+- User request:
+  - Commit the local serve-default change and doc touch-ups; sync everywhere
+- Completed:
+  - scripts/text_mirror.py: no-arg invocation now defaults to --serve
+  - README.md, SKILL.md, docs/runbooks/extension-server.md updated for the new
+    no-arg behavior
+- In progress:
+  - None
+- Next steps:
+  - None
+
 ## v1.0 - 2026-08-20
 - User request:
   - Bootstrap: initialized all standard workflow, documentation, and tooling files
