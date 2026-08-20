@@ -1,0 +1,16 @@
+{
+  "editor.formatOnSave": false,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "[python]": {
+    "editor.rulers": [100]
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.DS_Store": true,
+    "text-mirror": true,
+    "build": true,
+    "dist": true
+  }
+}

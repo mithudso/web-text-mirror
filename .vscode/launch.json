@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Crawl a site",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/text_mirror.py",
+      "args": ["https://example.org/", "--max-depth", "1"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Serve extension API",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/text_mirror.py",
+      "args": ["--serve"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run tests",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/test_text_mirror.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}

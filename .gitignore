@@ -1,6 +1,25 @@
-node_modules
+# OS / editor
 .DS_Store
+node_modules
+
+# Python
 __pycache__
 *.pyc
+venv/
+.venv/
+
+# Secrets / env
 .env
+
+# Crawl output (default output dir + logs + state)
 text-mirror/
+crawl.log
+*_state.json
+
+# PyInstaller artifacts
+build/
+dist/
+*.spec
+
+# Worktrees
+.claude/worktrees/

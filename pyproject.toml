@@ -1,0 +1,16 @@
+# Lint configuration only — this repo is a script, not a distributable package.
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# E402 enabled: the post-ensure_deps() imports in scripts/text_mirror.py carry
+# explicit `noqa: E402` markers (imports must follow the dependency bootstrap).
+extend-select = ["E402"]
+# BLE001 ignored: blind `except Exception` in fetch/parse/crawl paths is
+# intentional crawler resilience (see CLAUDE.md Key conventions #8).
+ignore = ["BLE001"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test harness reads a small temp file inline; context manager adds no value.
+"tests/*" = ["SIM115"]
