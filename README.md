@@ -59,4 +59,4 @@ A single Python process runs the crawler; `--serve` adds a threading HTTP server
 
 ## License
 
-TODO: no license file yet — see `docs/known-issues.md`.
+[MIT](LICENSE)

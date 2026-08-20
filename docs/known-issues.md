@@ -2,7 +2,7 @@
 
 | # | Symptom | Root cause | Workaround | Files |
 |---|---|---|---|---|
-| 1 | No LICENSE file | Deliberately left as an operator decision during bootstrap | Choose one (MIT/Apache-2.0/…) and commit it | `LICENSE` (missing) |
+| 1 | ~~No LICENSE file~~ | Resolved 2026-08-20: MIT chosen | — | `LICENSE` |
 | 2 | Uncapped forum/wiki crawls can explode (huge URL spaces: pagination, permalinks, reactions) | Inherently unbounded sites; `SKIP_SUBSTR` trims only the worst offenders | Use `--max-depth`; monitor `crawl.log`; `/stop` via API | `scripts/text_mirror.py` |
 | 3 | JS-rendered SPAs mirror poorly from CLI | Crawler fetches raw HTML, no browser | Use the Chrome extension `/save` path (captures rendered DOM), or single-file-cli | `scripts/text_mirror.py` |
 | 4 | First import may modify the interpreter's site-packages (pip install, up to `--break-system-packages`) | `ensure_deps()` self-bootstrap is a skill-packaging feature | Pre-provision via `scripts/install.sh` or venv | `scripts/text_mirror.py` |
