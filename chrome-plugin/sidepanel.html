@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web Text Mirror</title>
+  <style>
+    body { font-family: system-ui; padding: 10px; background: #f9f9f9; }
+    button { width: 100%; padding: 10px; margin-bottom: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #0056b3; }
+    ul { list-style-type: none; padding: 0; margin-top: 5px; }
+    li { margin-bottom: 6px; font-size: 11px; word-wrap: break-word; background: #eee; padding: 4px; border-radius: 3px; }
+    h3 { margin-top: 0; }
+    .controls { font-size: 12px; margin-bottom: 10px; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+    .controls label { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h3>Web Text Mirror</h3>
+  
+  <div class="controls">
+    <label><input type="checkbox" id="doCrawl"> Crawl links from this page</label>
+    <label>Max depth (hops): <input type="number" id="maxDepth" value="3" style="width: 50px;" title="How many links deep to follow (e.g. 3 hops = thousands of pages)"></label>
+    <label title="Crawler will never follow links to external domains"><input type="checkbox" checked disabled> Restrict to same domain</label>
+    <label title="If unchecked, skips pages already saved in this session"><input type="checkbox" id="forceRefresh"> Refresh downloaded pages</label>
+    <label style="margin-top: 5px;">Output File (optional):<br><input type="text" id="outFile" placeholder="Leave empty for text-mirror/<host>.md" style="width: 100%; box-sizing: border-box;"></label>
+  </div>
+
+  <div id="statusDiv" style="display: none; font-size: 12px; margin-bottom: 10px; padding: 8px; background: #e9ecef; border-radius: 4px;">
+    <strong>Crawl Active</strong><br>
+    Discovered: <span id="statDiscovered">0</span><br>
+    Downloaded: <span id="statDownloaded">0</span><br>
+    In Queue: <span id="statQueue">0</span>
+  </div>
+
+  <button id="saveBtn">Save Current Page</button>
+  
+  <p style="font-size: 13px; font-weight: bold; margin-bottom: 0;">Downloaded Links:</p>
+  <ul id="linkList"></ul>
+  
+  <script src="sidepanel.js"></script>
+</body>
+</html>

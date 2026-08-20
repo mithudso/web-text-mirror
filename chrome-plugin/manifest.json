@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Web Text Mirror",
+  "version": "1.0",
+  "description": "Saves pages to the local text mirror and tracks downloaded links.",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "Open Mirror Panel"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
