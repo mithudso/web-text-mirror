@@ -1,0 +1,56 @@
+[
+  {
+    "path": "scripts/text_mirror.py",
+    "purpose": "BFS website-to-Markdown crawler with trafilatura extraction, atomic resume state, and a hardened local HTTP API (127.0.0.1:8765) for the Chrome extension",
+    "layer": "backend",
+    "exports": ["crawl", "process_single_url", "fetch_and_extract", "get_robots", "wanted", "norm_host", "client_out_file", "PluginServerHandler", "run_server", "main"],
+    "depends_on": ["trafilatura", "lxml"],
+    "patterns": ["single-flight guard", "atomic write (os.replace)", "global rate limiter", "origin allowlist"],
+    "last_updated": "2026-08-20"
+  },
+  {
+    "path": "chrome-plugin/sidepanel.js",
+    "purpose": "Side-panel client: captures active-tab DOM, POSTs /save or /crawl to localhost:8765, polls /list for stats and saved URLs",
+    "layer": "frontend",
+    "exports": [],
+    "depends_on": ["chrome.scripting", "chrome.tabs"],
+    "patterns": ["1 Hz polling"],
+    "last_updated": "2026-08-20"
+  },
+  {
+    "path": "chrome-plugin/manifest.json",
+    "purpose": "MV3 manifest: sidePanel, activeTab, scripting permissions; background service worker",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-08-20"
+  },
+  {
+    "path": "tests/test_text_mirror.py",
+    "purpose": "Self-contained harness: unit checks on security/pure helpers plus a functional two-page localhost crawl and a crash-path regression",
+    "layer": "test",
+    "exports": [],
+    "depends_on": ["scripts/text_mirror.py"],
+    "patterns": ["embedded localhost fixture server"],
+    "last_updated": "2026-08-20"
+  },
+  {
+    "path": "scripts/install.sh",
+    "purpose": "Optional pre-provisioning of trafilatura/lxml into a chosen interpreter",
+    "layer": "tooling",
+    "exports": [],
+    "depends_on": ["pip"],
+    "patterns": [],
+    "last_updated": "2026-08-20"
+  },
+  {
+    "path": "SKILL.md",
+    "purpose": "Claude-skill packaging of the tool; frontmatter triggers plus usage that must mirror the real CLI flags",
+    "layer": "config",
+    "exports": [],
+    "depends_on": ["scripts/text_mirror.py"],
+    "patterns": [],
+    "last_updated": "2026-08-20"
+  }
+]
