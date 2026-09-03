@@ -101,6 +101,18 @@ CRAWL_STATS = {
     'in_queue': 0
 }
 
+# crawl-to-llms-txt: single-flight-with-queue for the (long, LLM-driven) /crawl2llms
+# skill run, entirely separate from the plain trafilatura crawl above -- a second
+# tab hitting the button while one is running queues instead of racing it.
+CRAWL_LLMS_LOCK = threading.Lock()
+CRAWL_LLMS_ACTIVE = False
+CRAWL_LLMS_CURRENT = None   # {"url", "started_at"} while a job is running, else None
+CRAWL_LLMS_QUEUE = []       # FIFO of {"url", "queued_at"} waiting behind the current job
+CRAWL_LLMS_HISTORY = []     # last _CRAWL_LLMS_HISTORY_MAX finished jobs, newest last
+_CRAWL_LLMS_HISTORY_MAX = 20
+CRAWL_LLMS_OUT_ROOT = None  # set in main(): where each job's llms.txt family lands
+_CRAWL_LLMS_TIMEOUT = 3600  # a hung `claude -p` must not wedge the queue forever
+
 # Global fetch rate limiter (shared across worker threads).
 _RATE_LOCK = threading.Lock()
 _next_fetch = 0.0
@@ -330,6 +342,67 @@ def process_single_url(url, host, delay, html_content=None, force_refresh=False,
     return True
 
 
+def claude_binary():
+    """The real `claude` binary. It is commonly a shell alias, which does not
+    exist in a subprocess, so a bare PATH lookup alone is not enough."""
+    import shutil
+    for c in (os.path.expanduser("~/.local/bin/claude"),
+              "/opt/homebrew/bin/claude", "/usr/local/bin/claude"):
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return shutil.which("claude")
+
+
+def _crawl_llms_txt_job(url):
+    """Run the crawl-to-llms-txt skill on `url` via a headless `claude -p`,
+    then drain the next queued URL (if any) -- the single-flight-with-queue
+    contract /crawl_llms_txt promises the extension. Resets the lock/active
+    state in every exit path so a crashed or hung job cannot wedge the queue."""
+    global CRAWL_LLMS_ACTIVE, CRAWL_LLMS_CURRENT
+    started = time.monotonic()
+    host = norm_host(urlparse(url).netloc) or "job"
+    out_dir = os.path.join(CRAWL_LLMS_OUT_ROOT, host)
+    os.makedirs(out_dir, exist_ok=True)
+    status, error = "ok", ""
+    binary = claude_binary()
+    if not binary:
+        status, error = "error", "claude binary not found on PATH"
+        log(f"crawl-llms-txt: {error}")
+    else:
+        argv = [binary, "-p", f"/crawl2llms {url} --out {out_dir}",
+                "--permission-mode", "acceptEdits"]
+        log(f"crawl-llms-txt: starting {url} -> {out_dir}")
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True,
+                                  timeout=_CRAWL_LLMS_TIMEOUT)
+            if proc.returncode != 0:
+                status, error = "error", (proc.stderr or "").strip()[-500:]
+        except subprocess.TimeoutExpired:
+            status, error = "error", f"timed out after {_CRAWL_LLMS_TIMEOUT}s"
+        except OSError as e:
+            status, error = "error", str(e)
+    duration = round(time.monotonic() - started, 1)
+    log(f"crawl-llms-txt: finished {url} status={status} in {duration}s")
+
+    next_url = None
+    with CRAWL_LLMS_LOCK:
+        CRAWL_LLMS_HISTORY.append({
+            "url": url, "status": status, "error": error, "out_dir": out_dir,
+            "duration_s": duration, "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        del CRAWL_LLMS_HISTORY[:-_CRAWL_LLMS_HISTORY_MAX]
+        if CRAWL_LLMS_QUEUE:
+            item = CRAWL_LLMS_QUEUE.pop(0)
+            next_url = item["url"]
+            CRAWL_LLMS_CURRENT = {"url": next_url,
+                                  "started_at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        else:
+            CRAWL_LLMS_CURRENT = None
+            CRAWL_LLMS_ACTIVE = False
+    if next_url is not None:
+        threading.Thread(target=_crawl_llms_txt_job, args=(next_url,), daemon=True).start()
+
+
 class PluginServerHandler(BaseHTTPRequestHandler):
     def _send_json(self, code, obj):
         body = json.dumps(obj).encode()
@@ -372,17 +445,48 @@ class PluginServerHandler(BaseHTTPRequestHandler):
                 'crawl_active': CRAWL_ACTIVE,
                 'stats': dict(CRAWL_STATS)
             })
+        elif self.path == '/crawl_llms_txt/status':
+            with CRAWL_LLMS_LOCK:
+                self._send_json(200, {
+                    'active': CRAWL_LLMS_ACTIVE,
+                    'current': CRAWL_LLMS_CURRENT,
+                    'queue': list(CRAWL_LLMS_QUEUE),
+                    'history': list(CRAWL_LLMS_HISTORY[-5:]),
+                })
         else:
             self.send_error(404)
 
     def do_POST(self):
-        global CRAWL_ACTIVE, CRAWL_CANCEL
+        global CRAWL_ACTIVE, CRAWL_CANCEL, CRAWL_LLMS_ACTIVE, CRAWL_LLMS_CURRENT
         if not self._origin_ok():
             self.send_error(403)
             return
         if self.path == '/stop':
             CRAWL_CANCEL = True
             self._send_json(200, {'status': 'stopping'})
+            return
+
+        if self.path == '/crawl_llms_txt':
+            try:
+                data = self._read_json()
+            except Exception:
+                self.send_error(400)
+                return
+            url = data.get('url')
+            if not url:
+                self.send_error(400)
+                return
+            with CRAWL_LLMS_LOCK:
+                if CRAWL_LLMS_ACTIVE:
+                    CRAWL_LLMS_QUEUE.append(
+                        {'url': url, 'queued_at': time.strftime("%Y-%m-%dT%H:%M:%S")})
+                    self._send_json(200, {'status': 'queued', 'position': len(CRAWL_LLMS_QUEUE)})
+                    return
+                CRAWL_LLMS_ACTIVE = True
+                CRAWL_LLMS_CURRENT = {'url': url,
+                                      'started_at': time.strftime("%Y-%m-%dT%H:%M:%S")}
+            threading.Thread(target=_crawl_llms_txt_job, args=(url,), daemon=True).start()
+            self._send_json(200, {'status': 'started', 'url': url})
             return
 
         if self.path in ('/save', '/crawl'):
@@ -608,7 +712,7 @@ def _crawl_impl(seed, host, delay, max_depth, seed_html=None, force_refresh=Fals
 
 
 def main():
-    global LOG_FILE, DEFAULT_OUT_FILE, CRAWL_ACTIVE
+    global LOG_FILE, DEFAULT_OUT_FILE, CRAWL_ACTIVE, CRAWL_LLMS_OUT_ROOT
     ap = argparse.ArgumentParser(description="Recursive text-only site mirror via trafilatura.")
     ap.add_argument("seeds", nargs="*", help="one or more seed URLs to crawl")
     ap.add_argument("--out", default=None,
@@ -632,6 +736,7 @@ def main():
     os.makedirs(log_dir or ".", exist_ok=True)
     LOG_FILE = os.path.join(log_dir or ".", "crawl.log")
     open(LOG_FILE, "a").close()
+    CRAWL_LLMS_OUT_ROOT = os.path.join(log_dir or ".", "llms-crawl")
 
     delay = 1.0 / args.req_per_sec if args.req_per_sec > 0 else args.delay
 
