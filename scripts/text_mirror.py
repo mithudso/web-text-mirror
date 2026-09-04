@@ -369,14 +369,32 @@ def _crawl_llms_txt_job(url):
         status, error = "error", "claude binary not found on PATH"
         log(f"crawl-llms-txt: {error}")
     else:
-        argv = [binary, "-p", f"/crawl2llms {url} --out {out_dir}",
-                "--permission-mode", "acceptEdits"]
+        # `claude -p` (headless/print mode) does not resolve custom skill
+        # slash-command aliases the way an interactive session does --
+        # `/crawl2llms` there prints "Unknown command" and exits 0, which
+        # looked like a fast, silent success (see concept_tree.py's
+        # research_prompt() for the same lesson). Natural language that
+        # names the skill directly is what actually triggers it headless.
+        prompt = (
+            f"Use the crawl-to-llms-txt skill on {url}. Crawl it and condense "
+            f"everything referenceable into a local llms.txt family under "
+            f"{out_dir} (create the directory if needed)."
+        )
+        argv = [binary, "-p", prompt, "--permission-mode", "acceptEdits"]
         log(f"crawl-llms-txt: starting {url} -> {out_dir}")
         try:
             proc = subprocess.run(argv, capture_output=True, text=True,
                                   timeout=_CRAWL_LLMS_TIMEOUT)
             if proc.returncode != 0:
                 status, error = "error", (proc.stderr or "").strip()[-500:]
+            elif not os.listdir(out_dir):
+                # A 0 exit with nothing written is not a real success -- this is
+                # exactly how the /crawl2llms-slash-command bug looked (claude -p
+                # printed "Unknown command" and exited 0 in ~7s). Surface it
+                # instead of a silent "ok" so the same class of bug can't hide.
+                status = "error"
+                error = ("claude exited 0 but wrote nothing to " + out_dir
+                         + "; stdout: " + (proc.stdout or "").strip()[-300:])
         except subprocess.TimeoutExpired:
             status, error = "error", f"timed out after {_CRAWL_LLMS_TIMEOUT}s"
         except OSError as e:
