@@ -1,4 +1,4 @@
 # Runtime dependencies for scripts/text_mirror.py.
 # The script also self-bootstraps these via pip on first run if missing.
-trafilatura>=2.0
-lxml>=6.1.2
+trafilatura>=2.2.0
+lxml>=5.0

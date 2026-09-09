@@ -86,3 +86,7 @@ URL: https://wiki.example.org/Some_Page
 - `scripts/install.sh` — optional pre-provisioning of trafilatura/lxml.
 - `chrome-plugin/` — MV3 side-panel extension (Load unpacked; needs `--serve`).
 - `tests/test_text_mirror.py` — self-contained harness (`python3 tests/test_text_mirror.py`).
+
+## Routing detail
+
+- SKIP: a condensed llms.txt reference, not a mirror → crawl-to-llms-txt. (seeded 2026-09-02 by /sko crawl-to-llms-txt)
