@@ -16,7 +16,8 @@ python3 scripts/text_mirror.py https://wiki.example.org/
 python3 scripts/text_mirror.py https://wiki.example.org/ --out out/mirror.md --max-depth 2 --delay 1.5
 
 # start the local API for the Chrome extension (127.0.0.1:8765)
-python3 scripts/text_mirror.py --serve
+python3 scripts/text_mirror.py --serve      # or just: python3 scripts/text_mirror.py
+                                            # (no args defaults to serve mode)
 ```
 
 Output lands in `text-mirror/<hostname>.md` by default, with a resumable per-host
