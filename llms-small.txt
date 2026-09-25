@@ -1,0 +1,15 @@
+<!-- Generated 2026-09-25 [gen: p/2.0.0]; verified-as-of 2026-09-25 -->
+
+# web-text-mirror (small)
+
+> Turns one or more live websites into a single consolidated Markdown file, each page preceded by a URL: header, using a BFS same-host crawl with trafilatura extraction. Includes a Chrome side-panel extension and a local HTTP API.
+
+## Essentials
+
+- Crawl: python3 scripts/text_mirror.py <seed-url> [--out FILE] [--delay N | --req-per-sec N] [--max-depth N]
+- Serve extension API: python3 scripts/text_mirror.py --serve (<host>)
+- Test: python3 tests/test_text_mirror.py
+- Lint: ruff check scripts/ tests/
+- Default output: text-mirror/<hostname>.md with a resumable <host>_state.json
+
+See llms.txt for the index and llms-facts.txt for sourced facts.
