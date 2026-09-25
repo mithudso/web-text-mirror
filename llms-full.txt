@@ -1,0 +1,592 @@
+<!-- Generated 2026-09-25 [gen: p/2.0.0]; verified-as-of 2026-09-25 -->
+
+# web-text-mirror
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/README.md
+
+## web-text-mirror
+
+Turn one or more live websites into a **single consolidated Markdown file** — one page
+after another, each preceded by a `URL:` header. Built for producing clean, LLM/search/
+RAG-ready corpora from wikis, forums, docs sites, and blogs. Includes a Chrome side-panel
+extension that saves the current tab (or kicks off a whole-site crawl) through a local
+HTTP API.
+
+### Quick start
+
+```bash
+# one-off crawl of a site (deps auto-install on first run)
+python3 scripts/text_mirror.py https://wiki.example.org/
+
+# custom output, depth-capped, slower
+python3 scripts/text_mirror.py https://wiki.example.org/ --out out/mirror.md --max-depth 2 --delay 1.5
+
+# start the local API for the Chrome extension (127.0.0.1:8765)
+python3 scripts/text_mirror.py --serve      # or just: python3 scripts/text_mirror.py
+                                            # (no args defaults to serve mode)
+```
+
+Output lands in `text-mirror/<hostname>.md` by default, with a resumable per-host
+`<host>_state.json` and a `crawl.log` beside it.
+
+### Features
+
+- **BFS crawl** from each seed, same-host scoped (normalized host comparison — case,
+  default ports, userinfo).
+- **Readable-text extraction** via [trafilatura](https://trafilatura.readthedocs.io/)
+  (Markdown; tables, comments, links, images kept; boilerplate stripped).
+- **Polite:** robots.txt per host (fail-open on network error, honoring 401/403
+  disallow), global per-request rate limiter (`--delay` / `--req-per-sec`),
+  descriptive UA.
+- **Public-only:** skips login/register/account/asset/action URLs.
+- **Incremental + resumable:** appends after every page; atomic per-host state file
+  lets an interrupted crawl resume.
+- **Chrome extension** (`chrome-plugin/`): side panel to save the current tab's
+  rendered DOM or start/stop/watch a crawl via `http://localhost:8765`.
+- **Hardened local API:** binds 127.0.0.1 only, Origin allowlist (extension +
+  loopback), browser-supplied output filenames confined to the output directory,
+  single-flight crawl guard.
+
+### Architecture
+
+A single Python process runs the crawler; `--serve` adds a threading HTTP server on
+127.0.0.1:8765 that the Chrome side-panel extension calls (`/save`, `/crawl`, `/stop`,
+`/list`). Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+### Docs
+
+- [Installation](docs/INSTALLATION.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Testing](docs/TESTING.md)
+- [Security](docs/SECURITY.md)
+- [Components](docs/COMPONENTS.md)
+- [Runbook: run a crawl](docs/runbooks/run-a-crawl.md)
+- [Runbook: extension + server](docs/runbooks/extension-server.md)
+- [Contributing](CONTRIBUTING.md)
+
+### License
+
+[MIT](LICENSE)
+
+# CLAUDE.md
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/CLAUDE.md
+
+## CLAUDE.md
+
+### Repository shape
+
+Single-package Python CLI + a static Chrome MV3 extension. No build step.
+
+| Path | What it is |
+|---|---|
+| `scripts/text_mirror.py` | The crawler + local HTTP API (single file, stdlib + trafilatura/lxml) |
+| `scripts/install.sh` | Optional pre-provisioning of trafilatura (crawler also self-bootstraps) |
+| `chrome-plugin/` | Chrome side-panel extension calling `http://localhost:8765` |
+| `tests/test_text_mirror.py` | Self-contained smoke/unit harness (no external network) |
+| `docs/` | Full documentation suite |
+| `text-mirror/` | Default output dir (gitignored) |
+| `SKILL.md` | Claude-skill packaging of this tool (kept in sync with actual flags) |
+
+### Commands
+
+```bash
+# run a crawl (deps auto-install into the current interpreter on first run)
+python3 scripts/text_mirror.py <seed-url> [--out FILE] [--delay N | --req-per-sec N] [--max-depth N]
+
+# serve the extension API only (127.0.0.1:8765)
+python3 scripts/text_mirror.py --serve
+
+# tests (needs trafilatura+lxml importable; exits non-zero on failure)
+python3 tests/test_text_mirror.py
+
+# lint + syntax
+ruff check scripts/ tests/
+python3 -m py_compile scripts/text_mirror.py
+```
+
+### Runtime architecture
+
+One Python process. CLI seeds run `crawl()` in the main thread; `--serve` starts a
+`ThreadingHTTPServer` daemon thread; `POST /crawl` spawns one crawl thread (single-flight
+guarded); each crawl fans fetches out to a 10-worker `ThreadPoolExecutor` throttled by a
+global rate limiter. Shared state (`SAVED_URLS`/`_SAVED_SET`, `CRAWL_*` flags) is guarded
+by module locks. See `docs/ARCHITECTURE.md` for the diagram.
+
+### Key conventions
+
+1. **Single file by design** — the crawler stays one dependency-light script so the
+   Claude skill can ship it verbatim. Don't split modules without strong reason.
+2. **Never lift the politeness rails** — robots.txt gate, rate limiter, and the
+   public-only `SKIP_SUBSTR`/`SKIP_EXT` lists are product behavior, not tunables.
+3. **Server security invariants** — bind 127.0.0.1 only; Origin allowlist
+   (`_origin_ok`); browser-supplied `out_file` must pass `client_out_file`
+   (basename-only, no dir collisions). Changing any of these is a security review.
+4. **All shared mutable state behind its lock** — `MIRROR_LOCK` for output +
+   saved-URL set, `STATE_LOCK` for state files, `CRAWL_START_LOCK` for single-flight.
+5. **State files are atomic** — write tmp + `os.replace`. Keep it that way.
+6. **`SKILL.md` mirrors real flags** — if you change the CLI surface, update
+   `SKILL.md`, `README.md`, and `docs/` in the same change.
+7. **Tests are network-free** — the harness spins its own localhost HTTP server;
+   never add a test that fetches the public internet.
+8. **Blind `except Exception` in fetch/parse paths is intentional** (crawler
+   resilience) — don't "fix" it to narrow exceptions without a failure analysis.
+
+### MCP servers
+
+None configured for this repo (`docs/MCP.md`).
+
+### Workflow log rule
+
+Append every user request to `prompts.md`
+(`## Prompt vN - <ISO timestamp>` / `- User request:` / `  - <text>`), keep
+`memory.md` current (active task / completed / next steps), and bump the version in
+`chrome-plugin/manifest.json` when the extension changes.
+
+# web-text-mirror
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/SKILL.md
+
+## web-text-mirror
+
+Turn one or more live websites into a **single consolidated text/Markdown file**, one
+page after another, each preceded by a `URL:` header. Built for producing clean,
+LLM/search-ready corpora from wikis, forums, docs sites, and blogs.
+
+### What it does
+- **BFS crawl** from each seed URL, staying on that seed's host (normalized: case,
+  default ports, userinfo).
+- **Extracts readable text** with `trafilatura` (Markdown output; tables, comments,
+  links + images kept, boilerplate stripped).
+- **Single-file output** with a `====… / URL: <url> / ====…` separator before every page.
+- **Polite by default:** robots.txt per host (401/403 → disallow; unreachable →
+  proceed with a logged warning), one request per `--delay` seconds enforced globally
+  across workers, descriptive UA.
+- **Public-only:** skips login/register/account/action/asset URLs.
+- **Incremental + resumable:** appends after every page; atomic per-host
+  `<host>_state.json` resumes interrupted crawls automatically.
+- **Chrome extension + local API:** `--serve` starts `127.0.0.1:8765`; the side panel
+  saves the current tab's *rendered* DOM (JS-rendered pages!) or starts/stops/watches
+  a crawl.
+
+### Requirements (auto-installed)
+Runtime dependency: **trafilatura** (pulls **lxml**). The crawler self-bootstraps via
+pip on first run. To pre-provision instead:
+
+```bash
+bash scripts/install.sh          # or: PYTHON=/path/to/python bash scripts/install.sh
+```
+
+### Usage
+
+```bash
+# one site, uncapped, default output ./text-mirror/<hostname>.md
+python scripts/text_mirror.py https://wiki.example.org/
+
+# multiple seeds, depth-capped, custom output, slower
+python scripts/text_mirror.py https://wiki.example.org/ https://forum.example.org/ \
+  --out out/mirror.md --max-depth 3 --delay 1.5
+
+# serve the Chrome-extension API only (running with no arguments does the same)
+python scripts/text_mirror.py --serve
+```
+
+#### Options
+| Flag | Env | Default | Meaning |
+|---|---|---|---|
+| `seeds` (positional) | — | — | one or more seed URLs; each crawled within its own host |
+| `--out` | — | `text-mirror/<hostname>.md` | consolidated Markdown output path |
+| `--delay` | `CRAWL_DELAY` | `1.0` | seconds between requests (global, per-request) |
+| `--req-per-sec` | — | `0` | requests/sec; overrides `--delay` when > 0 |
+| `--max-depth` | `MAX_DEPTH` | `0` | per-site depth limit in hops; `0` = unlimited |
+| `--serve` | — | on when no args given | local HTTP API for the Chrome extension on 127.0.0.1:8765; running with no seeds/--out/--serve defaults to serve mode |
+
+A sibling `crawl.log` is written next to `--out` with progress lines (every ~30 s
+state save) and any `robots-skip` / `no-content` / `fetch-error` notes.
+
+### Output format
+```
+==========================================================================================
+URL: https://wiki.example.org/Some_Page
+==========================================================================================
+
+# Some Page
+...extracted Markdown...
+```
+
+### Operational notes
+- **Uncapped forum crawls can explode.** XenForo/MediaWiki generate huge URL spaces.
+  Prefer `--max-depth` for large sites; monitor `crawl.log`. The `SKIP_SUBSTR` list
+  trims the worst offenders but cannot bound an inherently unbounded site.
+- **Resume:** re-running the same command continues from `<host>_state.json`; the
+  extension's Force refresh starts over (clears state + output).
+- **Login-gated content is intentionally skipped.** This tool does not authenticate.
+- **Same-host only.** Pass each host as its own seed.
+- Long runs: `nohup … &` and `tail -f crawl.log`.
+
+### Files
+- `scripts/text_mirror.py` — crawler + local HTTP API (CLI; auto-installs deps).
+- `scripts/install.sh` — optional pre-provisioning of trafilatura/lxml.
+- `chrome-plugin/` — MV3 side-panel extension (Load unpacked; needs `--serve`).
+- `tests/test_text_mirror.py` — self-contained harness (`python3 tests/test_text_mirror.py`).
+
+### Routing detail
+
+- SKIP: a condensed llms.txt reference, not a mirror → llms-txt-tooling (references/crawl-to-llms-txt.md). (seeded 2026-09-02 by /sko crawl-to-llms-txt)
+
+# Architecture
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/docs/ARCHITECTURE.md
+
+## Architecture
+
+### Context
+
+web-text-mirror converts public websites into a single consolidated Markdown file for
+LLM/search/RAG ingestion. Actors: an operator running the CLI, and optionally the
+bundled Chrome side-panel extension driving the same engine through a local HTTP API.
+External integrations: the target websites themselves (HTTP GET), each host's
+`robots.txt`, and PyPI (one-time self-bootstrap of trafilatura/lxml).
+
+### Container diagram
+
+```
+┌────────────────────────── Operator machine ──────────────────────────┐
+│                                                                      │
+│  Chrome ──────────────┐            ┌──────── python3 text_mirror.py ─┴──┐
+│  ┌─────────────────┐  │  HTTP JSON │  ┌────────────────────────────┐    │
+│  │ chrome-plugin/  │──┼───────────▶│  │ ThreadingHTTPServer        │    │
+│  │ side panel      │  │ 127.0.0.1  │  │ /save /crawl /stop /list   │    │
+│  │ (sidepanel.js)  │◀─┼── :8765 ───│  └──────────┬─────────────────┘    │
+│  └─────────────────┘  │            │             │ spawns (single-flight)│
+│                       │            │  ┌──────────▼─────────────────┐    │
+│                       │            │  │ crawl(): BFS queue          │    │
+│                       │            │  │  ├ robots.txt gate          │    │
+│                       │            │  │  ├ rate limiter (_throttle) │    │
+│                       │            │  │  └ ThreadPoolExecutor (10)  │───────▶ target sites
+│                       │            │  └──────────┬─────────────────┘    │   (HTTP GET)
+│                       │            │             │ appends              │
+│                       │            │   text-mirror/<host>.md            │
+│                       │            │   <host>_state.json (atomic)       │
+│                       │            │   crawl.log                        │
+│                       │            └────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Components per container
+
+- **CLI / entrypoint** (`main()`): argparse, log setup, seed loop, serve-mode wait loop.
+- **Crawl engine** (`crawl()` → `_crawl_impl()`): BFS queue, batching, depth limit,
+  resume-from-state, cancel handling; `fetch_and_extract()` per URL.
+- **Extraction**: trafilatura `fetch_url` + `extract` (Markdown, tables/comments/
+  links/images, favor_recall) with `lxml` link harvesting (`links_from`).
+- **Politeness**: `get_robots()` (timeout, fail-open on network error, 401/403
+  disallow), `_throttle()` global rate limiter, `SKIP_EXT`/`SKIP_SUBSTR` public-only
+  filters, descriptive UA.
+- **Persistence**: `append_to_file()` (single Markdown file, `URL:` separators),
+  `save_state()`/`load_state()` (atomic per-host JSON: crawled map, discovered set,
+  queue).
+- **Local API** (`PluginServerHandler`): `/save` (extension-supplied DOM → extract →
+  append), `/crawl` (spawn crawl thread), `/stop` (cancel flag), `/list` (saved URLs +
+  live stats). Guards: 127.0.0.1 bind, `_origin_ok` allowlist, `client_out_file`
+  filename confinement, single-flight via `CRAWL_START_LOCK`/`CRAWL_ACTIVE`.
+- **Chrome extension** (`chrome-plugin/`): MV3 side panel; captures
+  `document.documentElement.outerHTML` of the active tab via `chrome.scripting`,
+  posts to the API, polls `/list` at 1 Hz.
+
+### Runtime views
+
+**CLI crawl:** 1) parse args → 2) acquire single-flight reservation → 3) fetch
+robots.txt → 4) load/resume state → 5) pop ≤10 URLs, filter (depth/saved/robots) →
+6) throttled parallel fetch+extract → 7) append pages, harvest same-host links →
+8) periodic atomic state save → 9) repeat until queue empty/cancelled → 10) final save.
+
+**Extension save:** 1) user clicks Save → 2) side panel grabs rendered DOM →
+3) `POST /save {url, html, out_file?}` → 4) origin check → filename confinement →
+extract → append → 5) response includes updated saved-URL list.
+
+### Deployment topology
+
+Single machine, no daemon: run ad hoc from a shell. The API server binds
+`127.0.0.1:8765` only. Output tree defaults to `./text-mirror/`.
+
+### Architectural decisions (ADRs)
+
+1. **Single-file crawler** — ships verbatim inside a Claude skill; no packaging.
+2. **Threads over asyncio** — stdlib `http.server` + `ThreadPoolExecutor` keep the
+   file dependency-light; concurrency needs are modest (10 workers).
+3. **Fail-open robots on network error** — an unreachable robots.txt must not
+   silently zero out a crawl; HTTP 401/403 still disallow (stdlib-compatible policy).
+4. **Append-only output + atomic state** — partial output stays usable after a
+   crash; `os.replace` guarantees the resume file is never truncated JSON.
+5. **Global rate limiter** — politeness is enforced per request across all worker
+   threads, matching the documented `--delay`/`--req-per-sec` contract.
+6. **Local-API hardening as product behavior** — 127.0.0.1 bind, Origin allowlist,
+   and output-filename confinement are invariants, not options.
+
+### Constraints and quality attributes
+
+- Politeness: default 1 req/s; robots.txt honored per host.
+- Unbounded sites (forums/wikis) can explode — `--max-depth` is the operator's cap.
+- Memory: BFS `seen` set and state grow with the URL space; large crawls are
+  disk/RAM-linear.
+- Public-only by design: no authentication, ever.
+
+# Components
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/docs/COMPONENTS.md
+
+## Components
+
+### Layer: crawler (`scripts/text_mirror.py`)
+
+| Component | Purpose | Inputs → outputs | Notes |
+|---|---|---|---|
+| `ensure_deps()` | Self-bootstrap trafilatura/lxml via pip (4 escalating strategies incl. `--user`, `--break-system-packages`) | env → installed modules | Runs at import; exits on total failure |
+| `log(msg)` | Timestamped stdout + append to `crawl.log` | str → side effect | `LOG_LOCK`-guarded |
+| `_throttle(delay)` | Global per-request rate limiter across worker threads | delay → blocking sleep | Monotonic clock; `_RATE_LOCK` |
+| `norm(url)` / `norm_host(netloc)` | URL defrag/strip; netloc normalization (case, userinfo, :80/:443) | str → str | Host comparison basis |
+| `wanted(url, host)` | Same-host + scheme + skip-list filter | url, host → bool | `SKIP_EXT`, `SKIP_SUBSTR` |
+| `get_robots(host, scheme)` | Fetch+parse robots.txt with timeout; fail-open on network error; 401/403 → disallow | host → `RobotFileParser` | 30 s timeout |
+| `links_from(html, base, host)` | Harvest same-host `<a href>` links | html → [url] | lxml; parse errors logged |
+| `get_out_file` / `client_out_file` | Resolve output path; confine browser-supplied names to base dir (basename-only; rejects empty/dot/traversal/null/dir-collision) | → abs path or None | Security boundary |
+| `get_state_file` / `load_state` / `save_state` / `_load_queue` | Per-host resume state, schema-tolerant load, atomic write (`os.replace`) | ↔ `<host>_state.json` | `STATE_LOCK` |
+| `_mark_saved` / `_is_saved` / `_saved_snapshot` / `_reset_saved` | O(1) saved-URL set + ordered list for `/list` | ↔ `SAVED_URLS`/`_SAVED_SET` | `MIRROR_LOCK` |
+| `append_to_file(path, text, url)` | Append one page block (`URL:` separator) | → output .md | `MIRROR_LOCK` |
+| `process_single_url(...)` | `/save` path: extract supplied DOM (or fetch) → append | url/html → bool | Same extract options as crawl |
+| `fetch_and_extract(...)` | Worker: throttled fetch → extract → link harvest | url → (url, text, links) | Tri-state: (u,None,None)=no content |
+| `crawl(...)` → `_crawl_impl(...)` | BFS engine; wrapper guarantees `CRAWL_ACTIVE` reset on any exit | seed → n pages | Single-flight with server |
+| `PluginServerHandler` | HTTP API: `/save` `/crawl` `/stop` `/list` + CORS/OPTIONS | JSON ↔ JSON | `_origin_ok` gate; 400/403/409/500 semantics |
+| `run_server(delay)` | `ThreadingHTTPServer` on 127.0.0.1:8765 | — | Daemon thread |
+| `main()` | argparse, log setup, serve thread, seed loop w/ single-flight interlock | argv → exit | |
+
+### Layer: extension (`chrome-plugin/`)
+
+| File | Purpose |
+|---|---|
+| `manifest.json` | MV3; permissions: sidePanel, activeTab, scripting; no host permissions |
+| `background.js` | Opens the side panel on toolbar click (3 lines) |
+| `sidepanel.html` | Panel UI: crawl checkbox, max-depth, force-refresh, out-file, saved list |
+| `sidepanel.js` | Captures tab DOM via `chrome.scripting.executeScript`, POSTs `/save` or `/crawl`, polls `/list` at 1 Hz, toggles Stop button |
+
+### Layer: tooling
+
+| File | Purpose |
+|---|---|
+| `scripts/install.sh` | Optional pre-provisioning of trafilatura (`PYTHON=` override) |
+| `tests/test_text_mirror.py` | Self-contained unit + functional harness (see docs/TESTING.md) |
+
+### Dependency graph
+
+`sidepanel.js → localhost:8765 → PluginServerHandler → process_single_url/crawl →
+{trafilatura, lxml, urllib} → target sites`. The crawler imports only stdlib +
+trafilatura + lxml. The extension has no build deps.
+
+# Installation
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/docs/INSTALLATION.md
+
+## Installation
+
+### Prerequisites
+
+- macOS or Linux (Windows unverified — see docs/known-issues.md #8)
+- Python ≥ 3.9 with pip
+- Chrome (only if you want the extension)
+
+### Install
+
+**Option A — zero-install (self-bootstrap).** Just run it; on first start it pip-installs
+trafilatura/lxml into the current interpreter if missing:
+
+```bash
+python3 scripts/text_mirror.py https://example.org/ --max-depth 1
+```
+
+**Option B — venv (recommended for development):**
+
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Option C — pre-provision an interpreter:**
+
+```bash
+bash scripts/install.sh                      # uses python3
+PYTHON=/path/to/python bash scripts/install.sh
+```
+
+### Chrome extension
+
+1. `python3 scripts/text_mirror.py --serve` (leaves the API on 127.0.0.1:8765)
+2. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select
+   `chrome-plugin/`
+3. Click the toolbar icon → side panel opens.
+
+### Verify
+
+```bash
+python3 -m py_compile scripts/text_mirror.py           # no output = OK
+python3 tests/test_text_mirror.py                      # ends with ALL PASS
+python3 scripts/text_mirror.py https://example.org/ --max-depth 1
+ls text-mirror/                                        # example.org.md + crawl.log
+```
+
+### Upgrade
+
+```bash
+git pull
+pip install -U -r requirements.txt
+```
+
+Extension: `chrome://extensions` → reload the unpacked extension.
+
+### Uninstall
+
+Delete the repo clone; remove the unpacked extension in `chrome://extensions`;
+`pip uninstall trafilatura lxml` if you installed them globally. Crawl output lives
+only under your chosen `--out` locations.
+
+# Security
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/docs/SECURITY.md
+
+## Security
+
+### Trust boundaries and principals
+
+| Boundary | Untrusted side | Trusted side |
+|---|---|---|
+| Local HTTP API (127.0.0.1:8765) | Anything that can reach loopback: other local processes, and — via the browser — any web page issuing cross-origin requests | The crawler process |
+| Fetched web content | Target sites' HTML | lxml/trafilatura parsers |
+| Filesystem | Browser-supplied `out_file` values | Output base directory |
+| PyPI (bootstrap) | Package index | Local interpreter |
+
+Principals: the operator (full trust), the bundled Chrome extension
+(`chrome-extension://` origin — trusted client), everything else on the network
+(untrusted).
+
+### Authentication and authorization
+
+The API has no credentials; it relies on three enforced invariants:
+
+1. **Bind 127.0.0.1 only** (`run_server`) — nothing off-machine can connect.
+2. **Origin allowlist** (`_origin_ok`) — requests with an `Origin` header are
+   rejected unless it is `chrome-extension://`/`moz-extension://` or loopback
+   (`localhost`/`127.0.0.1`/`::1`). `Origin: null` (sandboxed iframes) is rejected;
+   header-less clients (curl, scripts) are allowed. Browsers always attach `Origin`
+   to cross-origin requests and extensions cannot be impersonated by web pages, so
+   drive-by pages cannot command the API.
+3. **Output confinement** (`client_out_file`) — browser-supplied `out_file` is
+   reduced to a basename inside the output base dir; empty/dot/traversal/null-byte
+   names and collisions with existing directories are rejected.
+
+### Secret management
+
+No secrets exist in this project. `.env` is gitignored defensively; never log or
+commit tokens.
+
+### Input validation
+
+- HTTP bodies: JSON parse + required-field checks → 400; non-integer `max_depth`
+  coerced to 0; `/save` failures → 500 with logged reason.
+- URLs: scheme restricted to http/https and host-matched in `wanted()`; skip lists
+  drop auth/asset/action URLs.
+- Fetched HTML: parsed by lxml/trafilatura; parse failures are caught and logged.
+
+### STRIDE mitigations
+
+| Threat | Mitigation |
+|---|---|
+| Spoofing (web page posing as extension) | Origin allowlist; extensions' origins are browser-enforced |
+| Tampering (state/output corruption) | Atomic state writes (`os.replace`); locks around shared state |
+| Repudiation | `crawl.log` records every save/skip/error with timestamps |
+| Information disclosure | Server binds loopback; responses expose only crawl metadata |
+| DoS (wedging the crawler) | Single-flight guard with guaranteed `CRAWL_ACTIVE` reset; handler exceptions → HTTP errors, not crashes |
+| Elevation (arbitrary file write) | `client_out_file` confinement; CLI `--out` is operator-trusted by design |
+
+Residual risk (accepted): any *local* process can drive the API — the API's
+capability equals what the same local user could do anyway. SSRF-style fetches of
+internal URLs are inherent to a crawler; the Origin gate blocks the browser as a
+confused deputy, and header-less local callers are already trusted.
+
+### Bootstrap supply chain
+
+`ensure_deps()` pip-installs unpinned trafilatura/lxml at first import, escalating to
+`--break-system-packages`. This is a deliberate usability trade-off for the
+skill-packaging use case; `requirements.txt` documents floor versions and
+`scripts/install.sh` is the explicit alternative. Pin exact versions if you need
+reproducibility.
+
+### Contributor checklist
+
+- [ ] Does the change touch `run_server`, `_origin_ok`, or `client_out_file`? →
+      security review + tests.
+- [ ] New shared state → which lock guards it?
+- [ ] New external input (HTTP field, env var, file) → validated where it enters?
+- [ ] Nothing sensitive logged.
+
+### Incident response
+
+Logs: stdout + `crawl.log` next to the output file. Contact: repository owner
+(@mithudso) via GitHub security advisory (see `.github/SECURITY.md`).
+
+### Compliance
+
+Crawls public content only; obeys robots.txt (401/403 → disallow); no PII is
+collected beyond what target pages publish.
+
+# Testing
+Source: https://github.com/mithudso/web-text-mirror/blob/HEAD/docs/TESTING.md
+
+## Testing
+
+### Strategy
+
+One self-contained harness (`tests/test_text_mirror.py`) covering two layers:
+
+- **Unit** — pure helpers with security or correctness weight: `norm_host`,
+  `wanted`, `client_out_file` (traversal/dir-collision/null-byte containment),
+  `get_state_file` (per-host keying), `_origin_ok` (allowlist incl. `null`-origin
+  rejection).
+- **Functional** — a real two-page crawl against a throwaway localhost
+  `ThreadingHTTPServer`: asserts page count, output `URL:` blocks, and crawl-state
+  flags; plus a crash-path regression (a raising crawl must reset `CRAWL_ACTIVE`).
+
+No mocking framework: the "mock" is an actual local HTTP server. **Nothing in the
+suite touches the public internet** — keep it that way.
+
+### Running
+
+```bash
+python3 tests/test_text_mirror.py     # needs trafilatura+lxml importable
+```
+
+Prints one `PASS`/`FAIL` line per check; exits non-zero listing failures. CI runs it
+on Python 3.11 and 3.13.
+
+### Writing a new test
+
+Add a `check("name", condition)` call near its subject area. Functional additions
+should extend the `PAGES` dict served by the embedded server. Import the module via
+its file path (see harness header) — the script self-bootstraps deps at import, so
+run inside an env where trafilatura is already present to avoid pip side effects.
+
+### Coverage target
+
+Meaningful coverage of important and changed/risky paths with real behavioral
+assertions — not a blanket line percentage. Concretely: every security invariant
+(`_origin_ok`, `client_out_file`, bind address), every crawl-lifecycle transition
+(start/cancel/crash/resume), and any changed code path must have a check that would
+fail if the behavior regressed. Assertion-free "coverage" does not count. There is
+currently **no numeric coverage gate** in CI; the gate is the harness passing.
+
+### CI gates (must pass before merge)
+
+1. `python -m py_compile scripts/text_mirror.py`
+2. `ruff check scripts/ tests/`
+3. `python tests/test_text_mirror.py`
+
+### Known limitations
+
+- The HTTP handlers are exercised only via unit checks on their helpers, not
+  end-to-end (`/save`/`/crawl` over a live socket) — a live-API test would be the
+  highest-value addition.
+- No pytest integration (single-script harness); porting would enable single-test
+  selection and fixtures.
+- robots.txt behavior is covered by the fail-open unit path only; no fixture server
+  serving actual robots.txt variants.

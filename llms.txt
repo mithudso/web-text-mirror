@@ -1,0 +1,29 @@
+<!-- Generated 2026-09-25 [gen: p/2.0.0]; verified-as-of 2026-09-25 -->
+
+# web-text-mirror
+
+> Turns one or more live websites into a single consolidated Markdown file, each page preceded by a URL: header, using a BFS same-host crawl with trafilatura extraction. Includes a Chrome side-panel extension and a local HTTP API.
+
+## Docs
+
+- [README.md](README.md): Overview, quick start, features
+- [CLAUDE.md](CLAUDE.md): Repository shape, commands, conventions
+- [SKILL.md](SKILL.md): Claude skill packaging
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architecture
+- [docs/COMPONENTS.md](docs/COMPONENTS.md): Components
+- [docs/SECURITY.md](docs/SECURITY.md): Security
+- [docs/TESTING.md](docs/TESTING.md): Testing
+- [docs/INSTALLATION.md](docs/INSTALLATION.md): Installation
+
+## Key files
+
+- [scripts/text_mirror.py](scripts/text_mirror.py): Crawler and local HTTP API (single file)
+- [scripts/install.sh](scripts/install.sh): Optional trafilatura pre-provisioning
+- [chrome-plugin/](chrome-plugin/): Chrome MV3 side-panel extension
+- [tests/test_text_mirror.py](tests/test_text_mirror.py): Network-free smoke/unit harness
+
+## Companion files
+
+- [llms-full.txt](llms-full.txt): concatenated key docs
+- [llms-small.txt](llms-small.txt): condensed summary
+- [llms-facts.txt](llms-facts.txt): sourced one-line facts
