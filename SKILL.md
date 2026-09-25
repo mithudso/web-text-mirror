@@ -89,4 +89,4 @@ URL: https://wiki.example.org/Some_Page
 
 ## Routing detail
 
-- SKIP: a condensed llms.txt reference, not a mirror → crawl-to-llms-txt. (seeded 2026-09-02 by /sko crawl-to-llms-txt)
+- SKIP: a condensed llms.txt reference, not a mirror → llms-txt-tooling (references/crawl-to-llms-txt.md). (seeded 2026-09-02 by /sko crawl-to-llms-txt)
