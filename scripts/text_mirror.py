@@ -39,15 +39,15 @@ from urllib.request import Request, urlopen
 from urllib.robotparser import RobotFileParser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import site_clone  # noqa: E402 -- same-directory module, stdlib-only at import
+import site_clone
 
 # The clean-acquisition path: many docs hosts publish llms-full.txt / llms.txt
 # + per-page .md, which keep the code blocks and tables trafilatura drops.
 # Stdlib-only and optional -- a box without the hub checkout just crawls.
 try:
     sys.path.insert(0, os.path.expanduser("~/.global-ai-hub/scripts"))
-    import llms_acquire  # noqa: E402
-except Exception:  # noqa: BLE001
+    import llms_acquire
+except Exception:
     llms_acquire = None
 
 
@@ -266,7 +266,7 @@ def get_robots(host, scheme="https"):
             log(f"robots {url}: HTTP {e.code} — server error, assuming deny-all")
             rp.disallow_all = True
             return rp
-        except Exception as e:  # noqa: BLE001 - transport failure, try next scheme
+        except Exception as e:
             last_error = e
             continue
         rp.parse(raw.splitlines())
@@ -534,7 +534,7 @@ def _crawl_llms_txt_job(url):
         log(f"crawl-llms-txt: starting {url} -> {out_dir}")
         try:
             proc = subprocess.run(argv, capture_output=True, text=True,
-                                  timeout=_CRAWL_LLMS_TIMEOUT)
+                                  timeout=_CRAWL_LLMS_TIMEOUT, check=False)
             if proc.returncode != 0:
                 status, error = "error", (proc.stderr or "").strip()[-500:]
             elif not os.listdir(out_dir):
@@ -584,7 +584,7 @@ def try_llms_acquire(seed, host, out_file, max_pages):
         return 0
     try:
         r = llms_acquire.acquire(seed, out_path, max_pages=max_pages, log=log)
-    except Exception as e:  # noqa: BLE001 -- never let the fast path break the crawl
+    except Exception as e:
         log(f"llms acquire error: {e}")
         return 0
     if not r["method"]:
@@ -634,7 +634,7 @@ def run_distill_job(job_id, url, host, html_content):
         set_job(status="distilling")
         proc = subprocess.run(
             ["python3", DISTILL_SCRIPT, "bulk", scratch_file, "--no-recursive", "--semantic"],
-            cwd=os.path.dirname(DISTILL_SCRIPT), capture_output=True, text=True, timeout=600)
+            cwd=os.path.dirname(DISTILL_SCRIPT), capture_output=True, text=True, timeout=600, check=False)
         if proc.returncode != 0:
             set_job(status="error", error=f"distill failed: {proc.stderr[-1000:]}")
             return
@@ -652,7 +652,7 @@ def run_distill_job(job_id, url, host, html_content):
         docset_name = f"page__{scratch_name}"
         idx_proc = subprocess.run(
             [HUB_VENV_PY, INDEXER_SCRIPT, "index", master_file, "--name", docset_name],
-            capture_output=True, text=True, timeout=120)
+            capture_output=True, text=True, timeout=120, check=False)
         indexed = idx_proc.returncode == 0
         set_job(status="done", points=points, indexed=indexed, docset=docset_name,
                 index_error=None if indexed else idx_proc.stderr[-500:])
@@ -660,7 +660,7 @@ def run_distill_job(job_id, url, host, html_content):
             f"{' (indexed as ' + docset_name + ')' if indexed else ' (index failed)'}")
     except subprocess.TimeoutExpired:
         set_job(status="error", error="distill or index step timed out")
-    except Exception as e:  # noqa: BLE001 -- the job status is the error channel
+    except Exception as e:
         set_job(status="error", error=str(e))
 
 
@@ -857,7 +857,7 @@ class PluginServerHandler(BaseHTTPRequestHandler):
                 CRAWL_ACTIVE = True  # reserve before spawning to close the race
             try:
                 cloner = build_cloner(host, out_file, data)
-            except Exception as e:  # noqa: BLE001 -- release the reservation on a bad request
+            except Exception as e:
                 CRAWL_ACTIVE = False
                 self._send_json(400, {'status': 'error', 'error': f'clone setup: {e}'})
                 return
@@ -1049,7 +1049,7 @@ def _crawl_impl(seed, host, delay, max_depth, seed_html=None, force_refresh=Fals
                     # for pages, only for the assets they reference.
                     try:
                         cloner.save_page(url, raw_html)
-                    except Exception as e:  # noqa: BLE001 -- a clone failure never stops the mirror
+                    except Exception as e:
                         log(f"clone-save-error {url}: {e}")
                 crawled[url] = time.strftime('%Y-%m-%d %H:%M:%S')
 

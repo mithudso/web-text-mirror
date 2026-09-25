@@ -1,0 +1,24 @@
+<!-- Generated 2026-09-25 [gen: p/2.0.0]; verified-as-of 2026-09-25 -->
+
+# web-text-mirror: Sourced Project Facts
+
+One declarative fact per line, each with a `[src:]` tag.
+
+## 2026-09-25 [gen: manual]
+
+- web-text-mirror crawls sites into one Markdown file with each page preceded by a `URL:` header [src: README.md]
+- The default output is text-mirror/<hostname>.md with a per-host <host>_state.json and a crawl.log beside it [src: README.md]
+- Crawling is BFS from each seed and scoped to the same normalized host [src: README.md]
+- Text extraction uses trafilatura to produce Markdown, keeping tables, comments, links and images and stripping boilerplate [src: README.md]
+- The crawler honors robots.txt per host (fail-open on network error, treating 401 and 403 as disallow) and uses a global per-request rate limiter [src: README.md]
+- The crawler skips login, register, account, asset and action URLs (public-only) [src: README.md]
+- Crawls append after every page and use an atomic per-host state file so an interrupted crawl can resume [src: README.md]
+- The local API binds <host> only, on port 8765, and exposes /save, /crawl, /stop and /list [src: README.md]
+- The local API enforces an Origin allowlist and confines browser-supplied output filenames to the output directory [src: README.md]
+- The crawler is a single file, scripts/text_mirror.py, by design so the Claude skill can ship it verbatim [src: CLAUDE.md]
+- A crawl fans fetches out to a 10-worker ThreadPoolExecutor throttled by a global rate limiter, and POST /crawl is single-flight guarded [src: CLAUDE.md]
+- The robots.txt gate, rate limiter and SKIP_SUBSTR/SKIP_EXT lists are product behavior and must not be lifted [src: CLAUDE.md]
+- State files are written atomically with a tmp file plus os.replace [src: CLAUDE.md]
+- Tests are network-free: the harness runs its own localhost HTTP server [src: CLAUDE.md]
+- The test command is `python3 tests/test_text_mirror.py` and lint is `ruff check scripts/ tests/` [src: CLAUDE.md]
+- The repository is licensed under MIT [src: README.md]
