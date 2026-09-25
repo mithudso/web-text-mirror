@@ -30,8 +30,8 @@ from urllib.parse import urljoin, urlsplit
 NAVIGABLE = {("a", "href"), ("area", "href"), ("form", "action")}
 
 # url(...) in stylesheets, plus @import in both its forms.
-_CSS_URL_RE = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""", re.I)
-_CSS_IMPORT_RE = re.compile(r"""@import\s+(?:url\(\s*)?(['"])([^'"]+)\1""", re.I)
+_CSS_URL_RE = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""", re.IGNORECASE)
+_CSS_IMPORT_RE = re.compile(r"""@import\s+(?:url\(\s*)?(['"])([^'"]+)\1""", re.IGNORECASE)
 
 _ILLEGAL = re.compile(r'[\x00-\x1f<>:"|?*\\]')
 
@@ -287,7 +287,7 @@ class SiteCloner:
         page_rel = self.plan(url)
         try:
             links = page_links(html, url)
-        except Exception as exc:  # noqa: BLE001 - a broken page must not stop the clone
+        except Exception as exc:
             self.log(f"clone-parse-error {url}: {exc}")
             links = []
 
@@ -310,7 +310,7 @@ class SiteCloner:
 
         try:
             self._write(page_rel, rewrite_html(html, url, mapper))
-        except Exception as exc:  # noqa: BLE001 - includes lxml ParserError on
+        except Exception as exc:
             # malformed/empty markup; one bad page must not end the crawl
             self.failed[url] = str(exc)
             self.log(f"clone-write-error {url}: {exc}")
@@ -337,7 +337,7 @@ class SiteCloner:
                 continue
             try:
                 data, ctype = fetch_bytes(url, self.ua)
-            except Exception as exc:  # noqa: BLE001 - one dead asset is not fatal
+            except Exception as exc:
                 self.failed[url] = str(exc)
                 continue
             if data is None:
@@ -349,10 +349,10 @@ class SiteCloner:
                     text = data.decode("utf-8", "replace")
                     for ref in css_urls(text, url):
                         self._queue_asset(ref)
-                    data = rewrite_css(text, url, lambda u: (
+                    data = rewrite_css(text, url, lambda u, rel=rel: (
                         relative_href(rel, self.planned[u])
                         if u in self.planned else u)).encode("utf-8")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     self.log(f"clone-css-error {url}: {exc}")
 
             try:
