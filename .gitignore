@@ -23,3 +23,6 @@ dist/
 
 # Worktrees
 .claude/worktrees/
+
+# Python packaging
+*.egg-info/
