@@ -7,6 +7,9 @@ Single-package Python CLI + a static Chrome MV3 extension. No build step.
 | Path | What it is |
 |---|---|
 | `scripts/text_mirror.py` | The crawler + local HTTP API (single file, stdlib + trafilatura/lxml) |
+| `scripts/site_clone.py` | Collision-resistant offline HTML/assets clone utility |
+| `scripts/maintain_docs.py` | Static references and drift checker; no runtime imports |
+| `scripts/rotate_workflow_logs.py` | Guarded local workflow-log archival |
 | `scripts/install.sh` | Optional pre-provisioning of trafilatura (crawler also self-bootstraps) |
 | `chrome-plugin/` | Chrome side-panel extension calling `http://localhost:8765` |
 | `tests/test_text_mirror.py` | Self-contained smoke/unit harness (no external network) |
@@ -25,6 +28,9 @@ python3 scripts/text_mirror.py --serve
 
 # tests (needs trafilatura+lxml importable; exits non-zero on failure)
 python3 tests/test_text_mirror.py
+python3 -m unittest discover -s tests -p test_regressions.py -v
+node --test tests/test_sidepanel.js
+python3 scripts/maintain_docs.py --check
 
 # lint + syntax
 ruff check scripts/ tests/
@@ -49,7 +55,7 @@ by module locks. See `docs/ARCHITECTURE.md` for the diagram.
    (`_origin_ok`); browser-supplied `out_file` must pass `client_out_file`
    (basename-only, no dir collisions). Changing any of these is a security review.
 4. **All shared mutable state behind its lock** — `MIRROR_LOCK` for output +
-   saved-URL set, `STATE_LOCK` for state files, `CRAWL_START_LOCK` for single-flight.
+   destination-scoped saved-URL sets, `STATE_LOCK` for state files, `CRAWL_START_LOCK` for single-flight.
 5. **State files are atomic** — write tmp + `os.replace`. Keep it that way.
 6. **`SKILL.md` mirrors real flags** — if you change the CLI surface, update
    `SKILL.md`, `README.md`, and `docs/` in the same change.
@@ -68,3 +74,16 @@ Append every user request to `prompts.md`
 (`## Prompt vN - <ISO timestamp>` / `- User request:` / `  - <text>`), keep
 `memory.md` current (active task / completed / next steps), and bump the version in
 `chrome-plugin/manifest.json` when the extension changes.
+
+
+## Maintenance boundaries
+
+Read `docs/wiki/README.md` and the latest `docs/repo-bootstrap-audit-*.md` first.
+Use Python 3.11+ and Node 22+ for checks. No package build, MCP server or service
+installation exists. Static references are generated with `python scripts/maintain_docs.py`;
+semantic indexing and external skill installation require separate scope.
+Before every commit, inspect effective Git hooks (`git config --show-origin --get
+core.hooksPath`, then `git rev-parse --git-path hooks`) and preserve validation and
+registry behavior. If semantic execution is paused, suppress only its verified block
+with a command-scoped hook filter. Never use `--no-verify` or change shared hook config.
+Do not run optional `/distill` or `/crawl_llms_txt` integrations during ordinary tests.

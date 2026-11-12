@@ -27,7 +27,7 @@ External integrations: the target websites themselves (HTTP GET), each host's
 │                       │            │  └──────────┬─────────────────┘    │   (HTTP GET)
 │                       │            │             │ appends              │
 │                       │            │   text-mirror/<host>.md            │
-│                       │            │   <host>_state.json (atomic)       │
+│                       │            │   <host>.<destination-key>_state.json (atomic)       │
 │                       │            │   crawl.log                        │
 │                       │            └────────────────────────────────────┘
 └──────────────────────────────────────────────────────────────────────┘
@@ -40,8 +40,7 @@ External integrations: the target websites themselves (HTTP GET), each host's
   resume-from-state, cancel handling; `fetch_and_extract()` per URL.
 - **Extraction**: trafilatura `fetch_url` + `extract` (Markdown, tables/comments/
   links/images, favor_recall) with `lxml` link harvesting (`links_from`).
-- **Politeness**: `get_robots()` (timeout, fail-open on network error, 401/403
-  disallow), `_throttle()` global rate limiter, `SKIP_EXT`/`SKIP_SUBSTR` public-only
+- **Politeness**: `get_robots()` (timeout, fail-open on network error, 4xx allow and 5xx disallow), `_throttle()` global rate limiter, `SKIP_EXT`/`SKIP_SUBSTR` public-only
   filters, descriptive UA.
 - **Persistence**: `append_to_file()` (single Markdown file, `URL:` separators),
   `save_state()`/`load_state()` (atomic per-host JSON: crawled map, discovered set,
@@ -76,7 +75,7 @@ Single machine, no daemon: run ad hoc from a shell. The API server binds
 2. **Threads over asyncio** — stdlib `http.server` + `ThreadPoolExecutor` keep the
    file dependency-light; concurrency needs are modest (10 workers).
 3. **Fail-open robots on network error** — an unreachable robots.txt must not
-   silently zero out a crawl; HTTP 401/403 still disallow (stdlib-compatible policy).
+   silently zero out a crawl; HTTP 4xx allow and 5xx disallow (stdlib-compatible policy).
 4. **Append-only output + atomic state** — partial output stays usable after a
    crash; `os.replace` guarantees the resume file is never truncated JSON.
 5. **Global rate limiter** — politeness is enforced per request across all worker
@@ -91,3 +90,33 @@ Single machine, no daemon: run ad hoc from a shell. The API server binds
 - Memory: BFS `seen` set and state grow with the URL space; large crawls are
   disk/RAM-linear.
 - Public-only by design: no authentication, ever.
+
+
+## Clone and optional integration runtime views
+
+With `--clone`, HTML acquisition feeds both Markdown extraction and `SiteCloner`.
+Cloning bypasses llms acquisition because Markdown alone cannot produce an HTML clone.
+Assets are queued once, fetched with bounded bodies/timeouts and paced on all attempts,
+then links are finalized against files actually written. URL hashes separate resource
+identities from clone metadata. Directory-descriptor writes refuse symlink traversal.
+The single-flight reservation remains held through clone finalization.
+
+Text-only shard state exchanges discovered URL depths. HTML clones refuse sharding
+until a reliable cross-shard asset-discovery/manifest contract exists. This prevents
+silent missing assets and competing manifest replacement.
+
+Optional workstation integrations add subprocesses beyond the core diagram:
+`llms_acquire` may fetch a site's own Markdown; `/crawl_llms_txt` invokes a headless
+editing agent; `/distill` invokes a semantic distiller then an external docset indexer.
+No such tool is installed or started by this repository's maintenance or CI.
+
+Resume filenames include the destination basename and shard count in their identity.
+Legacy host-only state is retained and ignored. Renaming output or changing shard count
+starts independent state. Keep output and state together; do not mix legacy state into
+an unrelated file. See the maintenance runbook before upgrading an existing corpus.
+
+Clone resumption validates a version2 manifest and retains canonical HTML/CSS beneath
+`_original/`. Finalization replays canonical sources against cumulative written resources,
+preserving the original entry and allowing newly acquired pages to become local links.
+Text completion and HTML completion are separate; a later clone fetches saved text pages
+without duplicating their Markdown blocks. Legacy clone manifests require a fresh directory.

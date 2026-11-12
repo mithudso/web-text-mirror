@@ -1,8 +1,10 @@
-# Copilot Instructions
-
 ## Default Execution Strategy
 
 **Always apply these rules to every task without being asked:**
+- Read relevant files and the latest audit ledger before editing.
+- Run applicable conventional tests after each change set.
+- Never invent commands, paths, policy promises or runtime systems.
+- Follow the workflow log rule in `CLAUDE.md`; keep prompts/memory and the extension version current.
 - **Parallelism first:** decompose every multi-part task into independent subtasks.
   Launch independent subtasks as parallel background agents simultaneously using the
   task tool. Only serialize where a later step genuinely depends on a prior result.
@@ -29,6 +31,10 @@ Read in this order: `README.md` → `CLAUDE.md` → `docs/ARCHITECTURE.md` →
 - Lint: `ruff check scripts/ tests/`
 - Syntax: `python3 -m py_compile scripts/text_mirror.py`
 - No build step; the Chrome extension loads unpacked from `chrome-plugin/`.
+
+- Regression tests: `python3 -m unittest discover -s tests -p test_regressions.py -v`
+- Panel fixtures: `node --test tests/test_sidepanel.js`
+- Static references: `python3 scripts/maintain_docs.py --check`
 
 ## High-level Architecture
 

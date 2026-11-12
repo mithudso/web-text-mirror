@@ -4,7 +4,7 @@
 
 ```bash
 python3 scripts/text_mirror.py https://wiki.example.org/
-# output: text-mirror/wiki.example.org.md, crawl.log, wiki.example.org_state.json
+# output: text-mirror/wiki.example.org.md, crawl.log, wiki.example.org.<destination-key>_state.json
 ```
 
 ## Long / large site
@@ -27,8 +27,10 @@ tail -f out/crawl.log
 
 ## Redo from scratch
 
-Via the extension, tick **Force refresh** (clears saved set, removes the output
-file). CLI equivalent: delete the output file and `<host>_state.json`, then re-run.
+Via the extension, tick **Force refresh** to restart the selected host. Its old URL
+blocks are replaced; other hosts and unrecognized bytes in a shared output remain.
+To restart all hosts from the CLI, choose a new output destination. Preserve existing
+output and state until the replacement is verified.
 
 ## Multiple sites into one file
 
@@ -49,6 +51,6 @@ Each host keeps its own state file; crawls run sequentially (single-flight).
 | Symptom | Do |
 |---|---|
 | `DONE 0 pages` + robots-skips | Site disallows; respect it |
-| `robots-read-error … assuming allow-all` | Expected for http-only/unreachable robots — crawl proceeds |
+| `robots-unreachable … assuming allow-all` | Expected for http-only/unreachable robots — crawl proceeds |
 | Only 1 page saved | Seed likely redirects off-host; pass the canonical host as seed |
 | Output has `[no extractable text]` blocks | Pages are JS-rendered — use the extension `/save` path |

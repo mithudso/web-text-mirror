@@ -21,7 +21,7 @@ python3 scripts/text_mirror.py --serve      # or just: python3 scripts/text_mirr
 ```
 
 Output lands in `text-mirror/<hostname>.md` by default, with a resumable per-host
-`<host>_state.json` and a `crawl.log` beside it.
+`<host>.<destination-key>_state.json` and a `crawl.log` beside it.
 
 ## Features
 
@@ -29,8 +29,7 @@ Output lands in `text-mirror/<hostname>.md` by default, with a resumable per-hos
   default ports, userinfo).
 - **Readable-text extraction** via [trafilatura](https://trafilatura.readthedocs.io/)
   (Markdown; tables, comments, links, images kept; boilerplate stripped).
-- **Polite:** robots.txt per host (fail-open on network error, honoring 401/403
-  disallow), global per-request rate limiter (`--delay` / `--req-per-sec`),
+- **Polite:** robots.txt per host (fail-open on network error, honoring 4xx allow and 5xx disallow), global per-request rate limiter (`--delay` / `--req-per-sec`),
   descriptive UA.
 - **Public-only:** skips login/register/account/asset/action URLs.
 - **Incremental + resumable:** appends after every page; atomic per-host state file
@@ -49,6 +48,8 @@ A single Python process runs the crawler; `--serve` adds a threading HTTP server
 
 ## Docs
 
+Start with the maintained [project wiki](docs/wiki/README.md).
+
 - [Installation](docs/INSTALLATION.md)
 - [Development](docs/DEVELOPMENT.md)
 - [Testing](docs/TESTING.md)
@@ -61,3 +62,18 @@ A single Python process runs the crawler; `--serve` adds a threading HTTP server
 ## License
 
 [MIT](LICENSE)
+
+## Offline clone and optional integrations
+
+`--clone` writes HTML and assets alongside Markdown. Open the clone's `index.html`;
+`_clone-manifest.json` lists written, failed and pending resources. Resource filenames
+use fragment-free URL hashes to prevent collisions. Missing resources retain live
+absolute links. Clone acquisition is unsharded; `--clone` with `--shard-count > 1`
+is rejected because asset discovery cannot safely cross shards.
+
+Text crawls support `--max-pages`, `--shard-index` and `--shard-count`.
+`--no-prefer-llms` disables the optional workstation `llms_acquire` fast path.
+Cloning always uses HTML acquisition. See [integration details](docs/integrations-and-assumptions.md).
+The optional `/crawl_llms_txt` and `/distill` API routes can invoke external models
+or semantic indexing. They are not used by the bundled panel and are never run
+live by the offline tests.

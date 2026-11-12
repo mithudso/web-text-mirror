@@ -13,3 +13,9 @@
 - [ ] CLI surface changes reflected in `SKILL.md`, `README.md`, and `docs/`
 - [ ] Server security invariants untouched (127.0.0.1 bind, Origin allowlist,
       `client_out_file` confinement) — or change flagged for security review
+
+## Risk
+
+## Rollback
+
+Revert the merged maintenance PR; preserve operator output/state.

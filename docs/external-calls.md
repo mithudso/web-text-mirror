@@ -1,18 +1,32 @@
-# External Calls Inventory
+# External calls
 
-Every place this codebase reaches outside its own process. (This repo is a Python
-CLI, not an mdb-tam Node service — the five-standard auto-remediation contract
-(CLI trigger / centralized error log / auto-remediation map / dashboard card /
-datastore verification) is **not applicable**; the columns below cover the
-politeness/error/test posture that applies here.)
+The generated [operations inventory](operations-registry.json) is owned by
+`python scripts/maintain_docs.py`; [route inventory](tool-inventory.json) lists all
+8 HTTP routes and zero MCP tools. The registry records source symbols, transport,
+targets, triggers, retry/error/remediation policy and actual persistence checks.
 
-| # | Call | Where | Transport | Error handling | Retry | Logged | Tested |
-|---|---|---|---|---|---|---|---|
-| 1 | Page fetch | `trafilatura.fetch_url` in `fetch_and_extract` | HTTP(S) GET, 30 s timeout, custom UA | caught → `fetch-error` log, URL skipped | none (BFS moves on) | yes | functional harness (localhost) |
-| 2 | Page fetch (`/save` path) | `trafilatura.fetch_url` in `process_single_url` | as above | `no-content` log → False; handler wraps → HTTP 500 | none | yes | via harness helpers |
-| 3 | robots.txt fetch | `urllib.request.urlopen` in `get_robots` | HTTPS/HTTP GET, 30 s timeout | 401/403 → disallow; other HTTPError → allow; network error → allow + `robots-read-error` log | none | yes | fail-open covered indirectly (crawl proceeds in harness) |
-| 4 | pip install | `subprocess.check_call` in `ensure_deps` | subprocess → PyPI | per-strategy catch, 4 escalating attempts, then `sys.exit` | 4 strategies | `[bootstrap]` prints | not tested (import-time; requires missing-dep env) |
-| 5 | Extension → local API | `fetch()` in `chrome-plugin/sidepanel.js` (`/save`, `/crawl`, `/stop`, `/list`) | HTTP JSON to 127.0.0.1:8765 | try/catch → user alert / console.error | 1 Hz `/list` poll re-syncs | console only | not tested (no extension harness) |
+| Operation | Logger / test / documentation | Retry and safety |
+|---|---|---|
+| Page fetch and save | fetch-error/no-content/save-error; smoke + API fixture; Components | No automatic write retry; global request throttle |
+| Robots | robots HTTP/unreachable events; synthetic failure fixtures; Architecture | Other scheme on transport failure; documented allow/deny policy |
+| Asset fetch | clone-asset-request/ok/error; clone fixtures; Components | Every attempt paced; bounded response; no retry; manifest failure accounting |
+| Pip bootstrap + install | bootstrap/installer stdout and failure exit; static command checks; Installation | Existing import-time escalation; explicit venv preferred |
+| Optional llms_acquire | acquisition/fallback events; blocked/mock in suites; Integrations | Fallback to text crawl; never called during maintenance |
+| Optional agent | start/finish + job history; setup-failure fixture; Integrations | Bounded FIFO/timeouts; billable external capability; no automatic retry |
+| Optional distill/index | job status/index outcome; subprocess mocks only; Integrations | Semantic writes; external tools; exit-only backend verification residual |
+| Panel API | visible status + console error; VM fixtures; extension runbook | No write retry; status poll; HTTP failures checked |
+| Static generator | command output/drift paths; CI --check; Development | Local git read + atomic generated-file replacement; no network/models |
 
-Gaps (tracked in docs/known-issues.md): #4 untestable without a disposable env;
-#5 extension has no automated tests; live-socket API test pending (known-issues #5).
+## Five-standard service contract applicability
+
+| Standard | This architecture |
+|---|---|
+| CLI/MCP operation trigger | Crawler/install/generator have direct CLI commands; browser save/stop and optional jobs use explicit documented local HTTP operations. No general-purpose operations runner is introduced. |
+| Central JSONL error service | Inapplicable as a server-platform requirement: core uses local crawl.log/stdout; panel uses visible errors; job history is in memory. No new global error datastore is installed. |
+| Remediation map | Inventory provides operation-specific manual remedies. No autonomous remediator is shipped or started. |
+| Dashboard cards | Inapplicable: the small panel exposes current crawl stats and controls, not a service dashboard. No dashboard is invented. |
+| Datastore readback | Markdown/clone writes have behavioral fixture checks; state/clone/generated references write atomically. Read-only calls have no datastore. Optional external indexer has an explicit independent-readback gap. |
+
+This is architecture-adapted coverage, not a claim that a generic five-standard
+service audit passed. File writes and subprocesses have their real side effects
+listed. Test fixtures use only temporary synthetic data and mocked optional tools.

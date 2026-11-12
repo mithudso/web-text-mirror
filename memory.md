@@ -1,5 +1,17 @@
 # web-text-mirror Memory Log
 
+## v1.0.1 - 2026-11-12
+- User request:
+  - Full repository maintenance, bootstrap and source audit with verified remote delivery.
+- Completed:
+  - Destination/resume, cancellation, refresh, clone safety/link handling, API validation, optional worker cleanup and extension error fixes.
+  - Offline adversarial regression fixtures; CI/static drift gates; maintained wiki and generated reference/operation/route inventories.
+  - Full source/config inventory and reports in docs; no file cap, model benchmark, corpus mutation, service activation or semantic generation.
+- In progress:
+  - Delivery verification is recorded in the external task receipt; this source log describes the reviewed candidate.
+- Next steps:
+  - Use the testing and maintenance runbooks. Treat optional live tools and maintainer policy choices as separate scope.
+
 ## v1.1 - 2026-08-20
 - User request:
   - Commit the local serve-default change and doc touch-ups; sync everywhere

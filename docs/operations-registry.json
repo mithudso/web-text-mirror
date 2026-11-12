@@ -1,0 +1,152 @@
+{
+  "operations": [
+    {
+      "id": "page-fetch",
+      "source": "scripts/text_mirror.py",
+      "symbol": "fetch_and_extract",
+      "transport": "HTTP(S)",
+      "target": "operator-selected website",
+      "readOnly": true,
+      "verifyDatastore": false,
+      "retryPolicy": "no application retry",
+      "trigger": "CLI seeds or POST /crawl",
+      "failure": "fetch-error/no-content; skip URL",
+      "remediation": "operator reviews URL/connectivity"
+    },
+    {
+      "id": "single-save",
+      "source": "scripts/text_mirror.py",
+      "symbol": "process_single_url",
+      "transport": "HTTP(S) or supplied DOM",
+      "target": "operator-selected page",
+      "readOnly": false,
+      "verifyDatastore": "offline regression checks URL block after append",
+      "retryPolicy": "manual retry; duplicate suppression per destination",
+      "trigger": "POST /save",
+      "failure": "save-error or 502 no content",
+      "remediation": "operator checks fetch/extraction"
+    },
+    {
+      "id": "robots",
+      "source": "scripts/text_mirror.py",
+      "symbol": "get_robots",
+      "transport": "HTTP(S)",
+      "target": "/robots.txt",
+      "readOnly": true,
+      "verifyDatastore": false,
+      "retryPolicy": "other scheme after transport failure",
+      "trigger": "crawl setup",
+      "failure": "4xx allow; 5xx deny; both transports unavailable allow with log",
+      "remediation": "operator reviews robots and transport diagnostics"
+    },
+    {
+      "id": "asset-fetch",
+      "source": "scripts/site_clone.py",
+      "symbol": "fetch_bytes",
+      "transport": "HTTP(S)",
+      "target": "discovered asset URL",
+      "readOnly": true,
+      "verifyDatastore": false,
+      "retryPolicy": "none; bounded timeout/size, paced attempts",
+      "trigger": "--clone after page acquisition",
+      "failure": "manifest failed entry + clone-asset-error",
+      "remediation": "operator reviews failed/pending manifest; unavailable links remain absolute"
+    },
+    {
+      "id": "dependency-bootstrap",
+      "source": "scripts/text_mirror.py",
+      "symbol": "ensure_deps",
+      "transport": "subprocess/PyPI",
+      "target": "pip",
+      "readOnly": false,
+      "verifyDatastore": "import discovery",
+      "retryPolicy": "four existing pip strategies",
+      "trigger": "first import with missing dependencies",
+      "failure": "bootstrap error / process exit",
+      "remediation": "use a preprovisioned virtual environment"
+    },
+    {
+      "id": "llms-acquisition",
+      "source": "scripts/text_mirror.py",
+      "symbol": "try_llms_acquire",
+      "transport": "optional workstation Python module/HTTP(S)",
+      "target": "site llms.txt family",
+      "readOnly": false,
+      "verifyDatastore": "read generated URL headers",
+      "retryPolicy": "fall back to crawl",
+      "trigger": "fresh unsharded non-clone crawl unless --no-prefer-llms",
+      "failure": "llms acquire error; fallback",
+      "remediation": "disable optional acquisition"
+    },
+    {
+      "id": "llms-agent",
+      "source": "scripts/text_mirror.py",
+      "symbol": "_crawl_llms_txt_job",
+      "transport": "optional subprocess/model/network",
+      "target": "claude -p",
+      "readOnly": false,
+      "verifyDatastore": "changed output directory entries",
+      "retryPolicy": "none; 3600s timeout",
+      "trigger": "POST /crawl_llms_txt (not bundled panel)",
+      "failure": "job history error",
+      "remediation": "operator verifies CLI/skill and inspects local output; may incur charges"
+    },
+    {
+      "id": "semantic-distill",
+      "source": "scripts/text_mirror.py",
+      "symbol": "run_distill_job",
+      "transport": "optional subprocess/semantic model",
+      "target": "external distill_offline.py then docset_indexer.py",
+      "readOnly": false,
+      "verifyDatastore": "master-file existence; indexer exit only",
+      "retryPolicy": "none; 600s + 120s timeouts",
+      "trigger": "POST /distill (not bundled panel)",
+      "failure": "job status/error",
+      "remediation": "operator authorizes semantic work separately and verifies backend"
+    },
+    {
+      "id": "panel-api",
+      "source": "chrome-plugin/sidepanel.js",
+      "symbol": "request",
+      "transport": "HTTP JSON",
+      "target": "127.0.0.1:8765",
+      "readOnly": false,
+      "verifyDatastore": "save response then list poll; server-side append tested offline",
+      "retryPolicy": "list polling; no automatic write retry",
+      "trigger": "panel user gesture or refresh",
+      "failure": "panel status/error",
+      "remediation": "operator checks local server response"
+    },
+    {
+      "id": "installer",
+      "source": "scripts/install.sh",
+      "symbol": "shell entrypoint",
+      "transport": "subprocess/PyPI",
+      "target": "pip requirements",
+      "readOnly": false,
+      "verifyDatastore": "module import/version checks",
+      "retryPolicy": "none; shell exits on failure",
+      "trigger": "bash scripts/install.sh",
+      "failure": "nonzero exit",
+      "remediation": "provision chosen virtual environment"
+    },
+    {
+      "id": "reference-generation",
+      "source": "scripts/maintain_docs.py",
+      "symbol": "inventory",
+      "transport": "local git subprocess/filesystem",
+      "target": "maintained source/config/docs",
+      "readOnly": false,
+      "verifyDatastore": "--check byte comparison",
+      "retryPolicy": "none",
+      "trigger": "python scripts/maintain_docs.py",
+      "failure": "nonzero exit / named drift paths",
+      "remediation": "regenerate static files and review diff"
+    }
+  ],
+  "status": "architecture-adapted",
+  "audit": {
+    "contract": "docs/external-calls.md",
+    "generic_service_standards": "explicit applicability matrix; no dashboard/MCP service"
+  }
+}

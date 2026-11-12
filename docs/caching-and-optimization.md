@@ -4,8 +4,8 @@
 
 | Layer | What | Invalidation |
 |---|---|---|
-| Saved-URL set (`_SAVED_SET` + `SAVED_URLS`) | O(1) in-memory dedup of already-mirrored pages | `force_refresh` clears it (and removes the output file) |
-| Per-host state file (`<host>_state.json`) | Crawled map + frontier queue for resume | `force_refresh` bypasses; schema-mismatch falls back to fresh |
+| Destination-scoped saved sets (`_SAVED_BY_FILE`), plus global UI list | O(1) in-memory dedup of already-mirrored pages | `force_refresh` clears only the selected host and replaces its banner blocks |
+| Per-host state file (`<host>.<destination-key>_state.json`) | Crawled map + frontier queue for resume | `force_refresh` bypasses; invalid schema falls back to fresh |
 | `seen` set (per crawl) | Prevents re-enqueueing discovered URLs | Per-crawl lifetime |
 
 No HTTP response caching — every fetch is live (politeness-limited), by design:
@@ -16,10 +16,10 @@ mirrors should reflect the site at crawl time.
 - **Batched parallel fetches** — one persistent 10-worker `ThreadPoolExecutor` per
   crawl (not per batch), throttled by the global rate limiter.
 - **O(1) membership** everywhere URL dedup happens (set alongside the ordered list).
-- **Append-only output** — no rewrite of the growing mirror file.
+- **Append-per-page output** — explicit host refresh streams an atomic replacement, preserving other hosts and unknown bytes.
 - **Atomic, throttled state saves** — every 30 s (`STATE_SAVE_INTERVAL`), not every
   page, and compact JSON (no indent).
-- **Depth-boundary pruning** — over-depth links are never enqueued.
+- **Depth-boundary retention** — over-depth links remain queued without fetching; a later higher limit resumes them.
 
 ## Known bottlenecks
 
@@ -38,3 +38,5 @@ python3 -m cProfile -s cumtime scripts/text_mirror.py https://example.org/ --max
 
 Expect wall-clock dominated by network + `time.sleep` (the throttle); anything else
 rising to the top is a regression.
+
+Clone assets use a deque and one URL identity per resource. Failed attempts are paced; finalization rewrites only written resources. No persistent HTTP response cache or semantic cache is created.
