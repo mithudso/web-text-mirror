@@ -10,6 +10,12 @@ venv/
 
 # Secrets / env
 .env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Crawl output (default output dir + logs + state)
 text-mirror/

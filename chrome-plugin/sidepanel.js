@@ -1,96 +1,124 @@
+const API_BASE = 'http://localhost:8765';
+const REQUEST_TIMEOUT_MS = 10000;
+const POLL_INTERVAL_MS = 1000;
 const doCrawl = document.getElementById('doCrawl');
 const saveBtn = document.getElementById('saveBtn');
 const statusDiv = document.getElementById('statusDiv');
+const feedback = document.getElementById('feedback');
 let isCrawlActive = false;
+let actionPending = false;
 
 function updateButtonState() {
-  if (isCrawlActive) {
-    saveBtn.textContent = "Stop Crawl";
-    saveBtn.style.background = "#dc3545";
-  } else if (doCrawl.checked) {
-    saveBtn.textContent = "Start Crawl";
-    saveBtn.style.background = "#28a745";
-  } else {
-    saveBtn.textContent = "Save Current Page";
-    saveBtn.style.background = "#007bff";
+  saveBtn.disabled = actionPending;
+  saveBtn.textContent = isCrawlActive ? 'Stop Crawl' : doCrawl.checked ? 'Start Crawl' : 'Save Current Page';
+  saveBtn.style.background = isCrawlActive ? '#dc3545' : doCrawl.checked ? '#28a745' : '#007bff';
+}
+
+function showError(message) {
+  feedback.textContent = message;
+  console.error('Mirror panel operation failed:', message);
+}
+
+async function request(path, payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(API_BASE + path, {
+      signal: controller.signal,
+      ...(payload === undefined ? {} : {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+    });
+    if (!response.ok) {
+      throw new Error(`Crawler returned HTTP ${response.status}. Check the local server.`);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 doCrawl.addEventListener('change', updateButtonState);
-
 saveBtn.addEventListener('click', async () => {
-  if (isCrawlActive) {
-    // Stop crawl
-    try {
-      await fetch('http://localhost:8765/stop', { method: 'POST' });
-    } catch (e) {
-      console.error("Failed to stop crawl:", e);
-    }
-    return;
-  }
-
-  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab && tab.url) {
-    const isCrawlChecked = document.getElementById('doCrawl').checked;
-    const maxDepth = parseInt(document.getElementById('maxDepth').value, 10) || 0;
-    const forceRefresh = document.getElementById('forceRefresh').checked;
-    const outFile = document.getElementById('outFile').value.trim();
-    
-    let injectionResults = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => document.documentElement.outerHTML
-    });
-    const html = injectionResults[0]?.result;
-    
-    const endpoint = isCrawlChecked ? '/crawl' : '/save';
-    const payload = { url: tab.url, html: html, force_refresh: forceRefresh };
-    if (isCrawlChecked) payload.max_depth = maxDepth;
-    if (outFile) payload.out_file = outFile;
-
-    try {
-      await fetch(`http://localhost:8765${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+  if (actionPending) return;
+  actionPending = true;
+  feedback.textContent = '';
+  updateButtonState();
+  try {
+    if (isCrawlActive) {
+      await request('/stop', {});
+      feedback.textContent = 'Stop requested.';
+    } else {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !/^https?:\/\//i.test(tab.url || '')) {
+        throw new Error('Select a public HTTP or HTTPS page to save.');
+      }
+      const depth = Number(document.getElementById('maxDepth').value);
+      if (!Number.isSafeInteger(depth) || depth < 0) {
+        throw new Error('Max depth must be a nonnegative integer; 0 means unlimited.');
+      }
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id }, func: () => ({ url: location.href, html: document.documentElement.outerHTML })
       });
-      // Force quick refresh
-      setTimeout(refreshList, 500);
-    } catch (err) {
-      alert("Error communicating with crawler. Is text_mirror.py running with --serve on port 8765?");
+      const captured = results?.[0]?.result;
+      if (!captured || typeof captured.html !== 'string' || !captured.html
+          || typeof captured.url !== 'string' || !/^https?:\/\//i.test(captured.url)) {
+        throw new Error('Could not read the selected page.');
+      }
+      const payload = { url: captured.url, html: captured.html,
+        force_refresh: document.getElementById('forceRefresh').checked };
+      const outFile = document.getElementById('outFile').value.trim();
+      if (outFile) payload.out_file = outFile;
+      if (doCrawl.checked) payload.max_depth = depth;
+      await request(doCrawl.checked ? '/crawl' : '/save', payload);
+      feedback.textContent = doCrawl.checked ? 'Crawl started.' : 'Page saved.';
     }
+    await refreshList();
+  } catch (error) {
+    showError(error instanceof Error ? error.message : 'Crawler request failed.');
+  } finally {
+    actionPending = false;
+    updateButtonState();
   }
 });
 
+let refreshPending = false;
 async function refreshList() {
+  if (refreshPending) return;
+  refreshPending = true;
   try {
-    const response = await fetch('http://localhost:8765/list');
-    const data = await response.json();
-    
+    const data = await request('/list');
+    if (!data || typeof data.crawl_active !== 'boolean' || !Array.isArray(data.saved_urls)
+        || data.saved_urls.some(url => typeof url !== 'string')
+        || (data.crawl_active && (!data.stats || typeof data.stats !== 'object'
+          || ['discovered', 'downloaded', 'in_queue'].some(key => !Number.isFinite(data.stats[key]) || data.stats[key] < 0)))) {
+      throw new Error('Crawler returned invalid status data.');
+    }
     isCrawlActive = data.crawl_active;
     updateButtonState();
-    
+    statusDiv.style.display = isCrawlActive ? 'block' : 'none';
     if (isCrawlActive) {
-      statusDiv.style.display = 'block';
-      document.getElementById('statDiscovered').textContent = data.stats.discovered;
-      document.getElementById('statDownloaded').textContent = data.stats.downloaded;
-      document.getElementById('statQueue').textContent = data.stats.in_queue;
-    } else {
-      statusDiv.style.display = 'none';
+      for (const [key, id] of [['discovered', 'statDiscovered'], ['downloaded', 'statDownloaded'], ['in_queue', 'statQueue']]) {
+        document.getElementById(id).textContent = data.stats[key];
+      }
     }
-    
-    if (data.saved_urls) {
-      const ul = document.getElementById('linkList');
-      ul.innerHTML = '';
-      [...data.saved_urls].reverse().forEach(url => {
-        let li = document.createElement('li');
-        li.textContent = url;
-        ul.appendChild(li);
-      });
-    }
-  } catch (err) {
-    console.error("Refresh failed:", err);
+    const ul = document.getElementById('linkList');
+    ul.replaceChildren();
+    [...data.saved_urls].reverse().forEach(url => {
+      const li = document.createElement('li');
+      li.textContent = url;
+      ul.appendChild(li);
+    });
+  } catch (error) {
+    showError(error instanceof Error ? error.message : 'Status refresh failed.');
+  } finally {
+    refreshPending = false;
   }
 }
 
-refreshList();
-setInterval(refreshList, 1000);
+async function poll() {
+  await refreshList();
+  setTimeout(poll, POLL_INTERVAL_MS);
+}
+poll();

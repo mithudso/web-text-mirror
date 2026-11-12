@@ -1,7 +1,7 @@
 # Onboarding
 
-Welcome. This repo is small on purpose: one Python file does everything, a four-file
-Chrome extension drives it, one test harness guards it.
+Welcome. This repo is small on purpose: a crawler file plus a clone utility provide acquisition, a four-file
+Chrome extension drives it, offline Python and Node fixtures guard it.
 
 ## 30-minute tour
 
@@ -16,7 +16,7 @@ Chrome extension drives it, one test harness guards it.
    less text-mirror/example.org.md
    ```
 4. **Run the tests** (2 min): `python3 tests/test_text_mirror.py` → `ALL PASS`.
-5. **Read `scripts/text_mirror.py` top to bottom** (10 min, ~670 lines). Reading
+5. **Read `scripts/text_mirror.py` top to bottom** (10 min, the complete file). Reading
    order: constants/locks → helpers (`norm_host`, `wanted`, `get_robots`) →
    `client_out_file`/`_origin_ok` (security) → `crawl`/`_crawl_impl` →
    `PluginServerHandler` → `main`.

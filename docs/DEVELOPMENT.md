@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python ≥ 3.9 (CI runs 3.11 and 3.13; developed on 3.14)
+- Python ≥ 3.11 (CI runs 3.11 and 3.13; local maintenance also verified on Python 3.15)
 - pip; optionally a venv
 - Chrome (only for extension work)
 - `ruff` for linting (`pip install ruff`)
@@ -13,7 +13,7 @@
 git clone https://github.com/mithudso/web-text-mirror.git
 cd web-text-mirror
 python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt ruff
+pip install -r requirements-dev.txt
 python3 tests/test_text_mirror.py   # should end with ALL PASS
 ```
 
@@ -40,9 +40,7 @@ python3 tests/test_text_mirror.py
 ```
 
 One self-contained harness: unit checks on the pure helpers plus a functional
-two-page crawl against a throwaway localhost server. Exit code 0 = pass. There is no
-finer-grained runner; to iterate on one check, comment others out locally (or port
-the harness to pytest — see `docs/TESTING.md` known limitations).
+two-page crawl against a throwaway localhost server. Exit code 0 = pass. For focused regression runs, use `python -m unittest discover -s tests -p test_regressions.py -k <name> -v` for a regression case.
 
 ## Lint / syntax
 
@@ -86,3 +84,6 @@ Work on feature branches; PR into `main`. Never commit crawl output (`text-mirro
 - **Crawl saves 0 pages** — check `crawl.log` for `robots-skip` (site disallows) vs
   `no-content` (fetch/extract failures).
 - **`409 busy` from `/crawl`** — another crawl is running; `/stop` it first.
+
+
+See [Testing](TESTING.md) for all offline gates and [the wiki](wiki/README.md) for the maintained command index.

@@ -1,0 +1,46 @@
+{
+  "totalTools": 0,
+  "mcp": [],
+  "httpRoutes": [
+    {
+      "path": "/list",
+      "method": "GET",
+      "description": "saved URLs and crawl stats"
+    },
+    {
+      "path": "/save",
+      "method": "POST",
+      "description": "save supplied/fetched page"
+    },
+    {
+      "path": "/crawl",
+      "method": "POST",
+      "description": "start single-flight crawl"
+    },
+    {
+      "path": "/stop",
+      "method": "POST",
+      "description": "request crawl cancellation"
+    },
+    {
+      "path": "/crawl_llms_txt",
+      "method": "POST",
+      "description": "optional billable editing-agent job"
+    },
+    {
+      "path": "/crawl_llms_txt/status",
+      "method": "GET",
+      "description": "optional agent queue/history"
+    },
+    {
+      "path": "/distill",
+      "method": "POST",
+      "description": "optional semantic distill/index job"
+    },
+    {
+      "path": "/distill_status",
+      "method": "GET",
+      "description": "optional semantic job status"
+    }
+  ]
+}

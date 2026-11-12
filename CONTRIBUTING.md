@@ -6,7 +6,7 @@
 git clone https://github.com/mithudso/web-text-mirror.git
 cd web-text-mirror
 python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt ruff
+pip install -r requirements-dev.txt
 ```
 
 ## Before you open a PR
@@ -32,3 +32,5 @@ All three must pass. CI runs the same gates on Python 3.11 and 3.13.
 ## Commits
 
 Short imperative subject (≤72 chars); body explains why when non-obvious.
+
+All additional Python/Node fixture and static drift gates in [Testing](docs/TESTING.md) must also pass. Inspect effective hooks before committing; preserve registry/validation and any semantic pause.

@@ -1,56 +1,652 @@
 [
   {
-    "path": "scripts/text_mirror.py",
-    "purpose": "BFS website-to-Markdown crawler with trafilatura extraction, atomic resume state, and a hardened local HTTP API (127.0.0.1:8765) for the Chrome extension",
-    "layer": "backend",
-    "exports": ["crawl", "process_single_url", "fetch_and_extract", "get_robots", "wanted", "norm_host", "client_out_file", "PluginServerHandler", "run_server", "main"],
-    "depends_on": ["trafilatura", "lxml"],
-    "patterns": ["single-flight guard", "atomic write (os.replace)", "global rate limiter", "origin allowlist"],
-    "last_updated": "2026-08-20"
-  },
-  {
-    "path": "chrome-plugin/sidepanel.js",
-    "purpose": "Side-panel client: captures active-tab DOM, POSTs /save or /crawl to localhost:8765, polls /list for stats and saved URLs",
-    "layer": "frontend",
-    "exports": [],
-    "depends_on": ["chrome.scripting", "chrome.tabs"],
-    "patterns": ["1 Hz polling"],
-    "last_updated": "2026-08-20"
-  },
-  {
-    "path": "chrome-plugin/manifest.json",
-    "purpose": "MV3 manifest: sidePanel, activeTab, scripting permissions; background service worker",
+    "path": ".editorconfig",
+    "purpose": "Maintained configuration file",
     "layer": "config",
     "exports": [],
     "depends_on": [],
     "patterns": [],
-    "last_updated": "2026-08-20"
+    "last_updated": "2026-11-12"
   },
   {
-    "path": "tests/test_text_mirror.py",
-    "purpose": "Self-contained harness: unit checks on security/pure helpers plus a functional two-page localhost crawl and a crash-path regression",
-    "layer": "test",
+    "path": ".env.example",
+    "purpose": "Environment variables read by scripts/text_mirror.py (all optional).",
+    "layer": "config",
     "exports": [],
-    "depends_on": ["scripts/text_mirror.py"],
-    "patterns": ["embedded localhost fixture server"],
-    "last_updated": "2026-08-20"
-  },
-  {
-    "path": "scripts/install.sh",
-    "purpose": "Optional pre-provisioning of trafilatura/lxml into a chosen interpreter",
-    "layer": "tooling",
-    "exports": [],
-    "depends_on": ["pip"],
+    "depends_on": [],
     "patterns": [],
-    "last_updated": "2026-08-20"
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".gitattributes",
+    "purpose": "Maintained configuration file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/CODEOWNERS",
+    "purpose": "Maintained configuration file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/FUNDING.yml",
+    "purpose": "Existing maintainer funding destinations, in GitHub's supported schema.",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+    "purpose": "Maintained .md file",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+    "purpose": "Maintained .md file",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/PULL_REQUEST_TEMPLATE.md",
+    "purpose": "Maintained .md file",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/SECURITY.md",
+    "purpose": "Security Policy",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/copilot-instructions.md",
+    "purpose": "Maintained .md file",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/dependabot.yml",
+    "purpose": "Maintained .yml file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".github/workflows/ci.yml",
+    "purpose": "Maintained .yml file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".gitignore",
+    "purpose": "OS / editor",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".node-version",
+    "purpose": "Maintained configuration file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".python-version",
+    "purpose": "Maintained configuration file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".vscode/extensions.json",
+    "purpose": "Maintained .json file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".vscode/launch.json",
+    "purpose": "Maintained .json file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": ".vscode/settings.json",
+    "purpose": "Maintained .json file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "AGENTS.md",
+    "purpose": "AGENTS.md",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "CLAUDE.md",
+    "purpose": "CLAUDE.md",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "CODE_OF_CONDUCT.md",
+    "purpose": "Code of Conduct",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "purpose": "Contributing",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "LICENSE",
+    "purpose": "Maintained configuration file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "README.md",
+    "purpose": "web-text-mirror",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
   },
   {
     "path": "SKILL.md",
-    "purpose": "Claude-skill packaging of the tool; frontmatter triggers plus usage that must mirror the real CLI flags",
+    "purpose": "web-text-mirror",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "chrome-plugin/background.js",
+    "purpose": "Maintained .js file",
+    "layer": "frontend",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "chrome-plugin/manifest.json",
+    "purpose": "Maintained .json file",
+    "layer": "frontend",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "chrome-plugin/sidepanel.html",
+    "purpose": "Maintained .html file",
+    "layer": "frontend",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "chrome-plugin/sidepanel.js",
+    "purpose": "Maintained .js file",
+    "layer": "frontend",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/ARCHITECTURE.md",
+    "purpose": "Architecture",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/COMPONENTS.md",
+    "purpose": "Components",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/DEVELOPMENT.md",
+    "purpose": "Development",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/INSTALLATION.md",
+    "purpose": "Installation",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/MCP.md",
+    "purpose": "MCP",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/SECURITY.md",
+    "purpose": "Security",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/TESTING.md",
+    "purpose": "Testing",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/archive/README.md",
+    "purpose": "Workflow log archive",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/caching-and-optimization.md",
+    "purpose": "Caching and Optimization",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/code-deep-optimizer-2026-11-12.md",
+    "purpose": "Code deep optimizer — 2026-11-12",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/external-calls.md",
+    "purpose": "External calls",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/integrations-and-assumptions.md",
+    "purpose": "Integrations and assumptions",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/known-issues.md",
+    "purpose": "Known issues and maintainer choices",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/logging.md",
+    "purpose": "Logging",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/onboarding.md",
+    "purpose": "Onboarding",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/repo-bootstrap-audit-2026-11-12.md",
+    "purpose": "Repo bootstrap audit — 2026-11-12",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/requirements.md",
+    "purpose": "Requirements",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/runbooks/extension-server.md",
+    "purpose": "Runbook: Extension + Server",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/runbooks/maintenance.md",
+    "purpose": "Runbook: safe maintenance",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/runbooks/run-a-crawl.md",
+    "purpose": "Runbook: Run a Crawl",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "docs/wiki/README.md",
+    "purpose": "Project wiki",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "memory.md",
+    "purpose": "web-text-mirror Memory Log",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "prompts.md",
+    "purpose": "web-text-mirror Prompts Log",
+    "layer": "docs",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "pyproject.toml",
+    "purpose": "Lint configuration only — this repo is a script, not a distributable package.",
     "layer": "config",
     "exports": [],
-    "depends_on": ["scripts/text_mirror.py"],
+    "depends_on": [],
     "patterns": [],
-    "last_updated": "2026-08-20"
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "requirements-dev.txt",
+    "purpose": "Maintained .txt file",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "requirements.txt",
+    "purpose": "Runtime floors verified with the offline suites; script, not a published package.",
+    "layer": "config",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "scripts/install.sh",
+    "purpose": "Explicitly provision the chosen interpreter using the repository requirements.",
+    "layer": "tooling",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "scripts/maintain_docs.py",
+    "purpose": "Generate static reference indexes from maintained source; never import the app.",
+    "layer": "tooling",
+    "exports": [
+      "safe_path",
+      "inventory",
+      "products",
+      "main"
+    ],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "scripts/rotate_workflow_logs.py",
+    "purpose": "Archive oversized logs without discarding concurrent writers' source bytes.",
+    "layer": "tooling",
+    "exports": [
+      "sections",
+      "child_directory",
+      "identity",
+      "rotate",
+      "main"
+    ],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "scripts/site_clone.py",
+    "purpose": "Offline HTML/assets clone. Paths use URL identities, never remote path segments.",
+    "layer": "backend",
+    "exports": [
+      "split",
+      "_resource",
+      "url_to_rel_path",
+      "clone_dir_name",
+      "safe_join",
+      "is_asset",
+      "_absolute",
+      "css_urls",
+      "rewrite_css",
+      "relative_href",
+      "_srcset",
+      "_document",
+      "page_links",
+      "rewrite_html",
+      "fetch_bytes",
+      "SiteCloner"
+    ],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "scripts/text_mirror.py",
+    "purpose": "Recursive text-only website mirror via trafilatura.",
+    "layer": "backend",
+    "exports": [
+      "ensure_deps",
+      "log",
+      "parse_master_points",
+      "_throttle",
+      "norm",
+      "norm_host",
+      "wanted",
+      "get_robots",
+      "links_from",
+      "_base_out_file",
+      "get_out_file",
+      "owns",
+      "client_out_file",
+      "_safe_host",
+      "get_state_file",
+      "merge_siblings",
+      "_load_queue",
+      "load_state",
+      "save_state",
+      "_mark_saved",
+      "_is_saved",
+      "_saved_snapshot",
+      "_reset_saved",
+      "_refresh_host_output",
+      "append_to_file",
+      "process_single_url",
+      "claude_binary",
+      "validated_url",
+      "_crawl_llms_txt_job",
+      "try_llms_acquire",
+      "run_distill_job",
+      "crawl_job",
+      "build_cloner",
+      "PluginServerHandler",
+      "run_server",
+      "fetch_and_extract",
+      "crawl",
+      "_crawl_impl",
+      "main"
+    ],
+    "depends_on": [
+      "scripts/site_clone.py",
+      "trafilatura",
+      "lxml"
+    ],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "tests/test_regressions.py",
+    "purpose": "Synthetic regressions. No public network, host integrations or model calls.",
+    "layer": "test",
+    "exports": [
+      "CrawlerTests",
+      "CloneTests",
+      "ToolTests"
+    ],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "tests/test_sidepanel.js",
+    "purpose": "Maintained .js file",
+    "layer": "test",
+    "exports": [],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
+  },
+  {
+    "path": "tests/test_text_mirror.py",
+    "purpose": "Self-contained test harness for scripts/text_mirror.py.",
+    "layer": "test",
+    "exports": [
+      "check",
+      "temp_dir",
+      "FakeReq",
+      "H",
+      "close_server",
+      "local_fetch"
+    ],
+    "depends_on": [],
+    "patterns": [],
+    "last_updated": "2026-11-12"
   }
 ]

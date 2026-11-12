@@ -21,22 +21,19 @@ The API has no credentials; it relies on three enforced invariants:
 2. **Origin allowlist** (`_origin_ok`) — requests with an `Origin` header are
    rejected unless it is `chrome-extension://`/`moz-extension://` or loopback
    (`localhost`/`127.0.0.1`/`::1`). `Origin: null` (sandboxed iframes) is rejected;
-   header-less clients (curl, scripts) are allowed. Browsers always attach `Origin`
-   to cross-origin requests and extensions cannot be impersonated by web pages, so
-   drive-by pages cannot command the API.
+   header-less clients (curl, scripts) are allowed. This filter is defense in depth, not authentication. Local processes are trusted.
 3. **Output confinement** (`client_out_file`) — browser-supplied `out_file` is
    reduced to a basename inside the output base dir; empty/dot/traversal/null-byte
    names and collisions with existing directories are rejected.
 
 ## Secret management
 
-No secrets exist in this project. `.env` is gitignored defensively; never log or
+No credentials are required by the core crawler. `.env` is gitignored defensively; never log or
 commit tokens.
 
 ## Input validation
 
-- HTTP bodies: JSON parse + required-field checks → 400; non-integer `max_depth`
-  coerced to 0; `/save` failures → 500 with logged reason.
+- HTTP bodies: JSON parse + required-field checks → 400; non-integer or negative limits rejected; `/save` failures → 500 with logged reason.
 - URLs: scheme restricted to http/https and host-matched in `wanted()`; skip lists
   drop auth/asset/action URLs.
 - Fetched HTML: parsed by lxml/trafilatura; parse failures are caught and logged.
@@ -80,5 +77,23 @@ Logs: stdout + `crawl.log` next to the output file. Contact: repository owner
 
 ## Compliance
 
-Crawls public content only; obeys robots.txt (401/403 → disallow); no PII is
-collected beyond what target pages publish.
+Crawls public content only; obeys robots.txt (4xx → allow; 5xx → disallow); no compliance or privacy attestation is made. Operators choose the content.
+
+
+## Maintenance hardening and residual trust
+
+The API rejects non-loopback Host headers to block browser DNS rebinding.
+JSON requests require an object with a typed HTTP(S) URL, bounded 8 MiB body and
+read timeout. Credentials, whitespace, control characters and dot-only hosts are
+rejected. Browser clone directory names are confined beside output. Clone writes
+use no-follow directory descriptors and atomic replacement; Markdown append refuses
+a symlink basename. URL hashing prevents remote path names from colliding with clone
+metadata. Optional model jobs are powerful local capabilities: they can invoke an
+editing agent or semantic indexer and must not be exposed outside the operator's
+trusted machine. Tests mock them; the repository does not attest to external tool
+safety or backend correctness. Clone HTML contains active original scripts; it is
+not sanitized static prose.
+
+Existing URL logs can include sensitive path/query data. Avoid such inputs and treat
+local logs as operator data. No security response-time SLA is declared; a maintainer
+must explicitly adopt one if desired. No license or conduct policy was changed.

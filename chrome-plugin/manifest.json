@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web Text Mirror",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "Saves pages to the local text mirror and tracks downloaded links.",
   "permissions": [
     "sidePanel",
@@ -16,5 +16,6 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
-  }
+  },
+  "minimum_chrome_version": "116"
 }

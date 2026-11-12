@@ -11,16 +11,20 @@ Requires trafilatura + lxml importable (the module self-bootstraps them via pip
 otherwise — run inside a provisioned venv to avoid that side effect).
 Never touches the public internet.
 """
+import atexit
 import importlib.util
 import os
 import sys
 import tempfile
 import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 SCRIPT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                       "scripts", "text_mirror.py")
+
+sys.modules["llms_acquire"] = None
 
 spec = importlib.util.spec_from_file_location("text_mirror", SCRIPT)
 tm = importlib.util.module_from_spec(spec)
@@ -65,7 +69,16 @@ check("client_out_file rejects empty", tm.client_out_file("") is None)
 check("client_out_file rejects trailing-slash dir", tm.client_out_file("a/b/") is None)
 check("client_out_file rejects null byte", tm.client_out_file("a\x00b") is None)
 
-_tdir = tempfile.mkdtemp()
+_fixture_dirs = []
+
+def temp_dir():
+    directory = tempfile.TemporaryDirectory()
+    _fixture_dirs.append(directory)
+    atexit.register(directory.cleanup)
+    return directory.name
+
+
+_tdir = temp_dir()
 os.mkdir(os.path.join(_tdir, "adir"))
 tm.DEFAULT_OUT_FILE = os.path.join(_tdir, "out.md")
 check("client_out_file rejects existing-dir name", tm.client_out_file("adir") is None)
@@ -123,15 +136,32 @@ class H(BaseHTTPRequestHandler):
 
 srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
 port = srv.server_address[1]
-threading.Thread(target=srv.serve_forever, daemon=True).start()
-time.sleep(0.2)
+server_thread = threading.Thread(target=srv.serve_forever, daemon=True)
+server_thread.start()
 
-out = os.path.join(tempfile.mkdtemp(), "mirror.md")
+def close_server():
+    srv.shutdown()
+    srv.server_close()
+    server_thread.join(timeout=3)
+
+atexit.register(close_server)
+
+out = os.path.join(temp_dir(), "mirror.md")
 tm.DEFAULT_OUT_FILE = out
 tm.LOG_FILE = None
 seed = f"http://127.0.0.1:{port}/"
 host = tm.norm_host(f"127.0.0.1:{port}")
 
+def local_fetch(url, config=None):
+    parsed = urlparse(url)
+    if parsed.hostname != '127.0.0.1' or parsed.port != port:
+        raise AssertionError('fixture cannot leave its localhost origin')
+    with urlopen(Request(url, headers={'User-Agent': tm.UA}), timeout=3) as response:
+        return response.read().decode('utf-8')
+
+
+tm.trafilatura.fetch_url = local_fetch
+tm.llms_acquire = None
 n = tm.crawl(seed, host, delay=0, max_depth=0, out_file=out)
 
 data = open(out).read() if os.path.exists(out) else ""
@@ -139,9 +169,13 @@ check("crawl saved 2 pages", n == 2)
 check("output has index URL", seed in data)
 check("output has page2 URL", f"http://127.0.0.1:{port}/page2.html" in data)
 check("output has 2 URL blocks", data.count("URL: ") == 2)
+check("output contains extracted index text", "index page" in data)
+check("output contains extracted second-page text", "Second page body content" in data)
+check("fixture extraction is not placeholder-only", "[no extractable text]" not in data)
 check("crawl marked inactive at end", tm.CRAWL_ACTIVE is False)
 
-srv.shutdown()
+close_server()
+atexit.unregister(close_server)
 
 # ---- regression: a crashing crawl must reset CRAWL_ACTIVE ---------------------
 # (single-flight guard would otherwise wedge and reject every future /crawl)

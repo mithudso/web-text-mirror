@@ -1,57 +1,46 @@
 # Testing
 
-## Strategy
+## Commands and layers
 
-One self-contained harness (`tests/test_text_mirror.py`) covering two layers:
+Install `python -m pip install -r requirements-dev.txt`; use Python 3.11+ and Node 22+.
+No build step exists.
 
-- **Unit** — pure helpers with security or correctness weight: `norm_host`,
-  `wanted`, `client_out_file` (traversal/dir-collision/null-byte containment),
-  `get_state_file` (per-host keying), `_origin_ok` (allowlist incl. `null`-origin
-  rejection).
-- **Functional** — a real two-page crawl against a throwaway localhost
-  `ThreadingHTTPServer`: asserts page count, output `URL:` blocks, and crawl-state
-  flags; plus a crash-path regression (a raising crawl must reset `CRAWL_ACTIVE`).
+| Command | Coverage |
+|---|---|
+| `python tests/test_text_mirror.py` | Existing helper assertions and two-page localhost crawl; bounded local fetch adapter isolates the fixture from upstream response suitability thresholds |
+| `python -m unittest discover -s tests -p test_regressions.py -v` | Destination identity, cancellation/resume, refresh, duplicate writes, API validation/status, optional-job cleanup, clone mapping/CSS/HTML/assets/limits/symlinks and tooling |
+| `node --test tests/test_sidepanel.js` | Mock DOM/Chrome/fetch; HTTP rejection, capture errors, depth validation, duplicate clicks, safe rendering and background rejection |
+| `ruff check scripts/ tests/` | Python lint |
+| `python -m compileall -q scripts tests` | Python syntax across maintained components |
+| `bash -n scripts/install.sh` | Installer syntax |
+| `node --check chrome-plugin/background.js` and `node --check chrome-plugin/sidepanel.js` | Extension JavaScript syntax |
+| `python scripts/maintain_docs.py --check` | Static reference path/content drift |
 
-No mocking framework: the "mock" is an actual local HTTP server. **Nothing in the
-suite touches the public internet** — keep it that way.
+Run a single regression with `python -m unittest discover -s tests -p test_regressions.py -k output_state -v`.
+GitHub CI runs all gates on Python 3.11 and 3.13, with Node 22. A failure blocks delivery.
 
-## Running
+## Fixture and assertion rules
 
-```bash
-python3 tests/test_text_mirror.py     # needs trafilatura+lxml importable
-```
+Tests preblock the optional host module before importing the crawler. Optional
+subprocess/model/indexing integrations are mocked. Network fixtures bind only a
+throwaway loopback port and use synthetic HTML; no public site, private corpus,
+API token, model or semantic service participates. Preinstall dependencies so import
+cannot invoke the fallback pip bootstrap.
 
-Prints one `PASS`/`FAIL` line per check; exits non-zero listing failures. CI runs it
-on Python 3.11 and 3.13.
+Assert observable results: output banners, saved/queued identities, local file bytes,
+HTTP statuses, DOM text, error events and resource bounds. Every important changed
+path needs a failure-sensitive assertion. No numeric coverage percentage is enforced.
+Add isolated `unittest` cases to `test_regressions.py`; temporary directories and mocks
+must clean up. The original harness remains a standalone process because it uses
+module globals and exits. Independent Node test contexts isolate DOM state. There
+are no real sleeps in the regression suites; fixture server shutdown may wait for
+its bounded polling interval.
 
-## Writing a new test
+## Limits and empirical eligibility
 
-Add a `check("name", condition)` call near its subject area. Functional additions
-should extend the `PAGES` dict served by the embedded server. Import the module via
-its file path (see harness header) — the script self-bootstraps deps at import, so
-run inside an env where trafilatura is already present to avoid pip side effects.
-
-## Coverage target
-
-Meaningful coverage of important and changed/risky paths with real behavioral
-assertions — not a blanket line percentage. Concretely: every security invariant
-(`_origin_ok`, `client_out_file`, bind address), every crawl-lifecycle transition
-(start/cancel/crash/resume), and any changed code path must have a check that would
-fail if the behavior regressed. Assertion-free "coverage" does not count. There is
-currently **no numeric coverage gate** in CI; the gate is the harness passing.
-
-## CI gates (must pass before merge)
-
-1. `python -m py_compile scripts/text_mirror.py`
-2. `ruff check scripts/ tests/`
-3. `python tests/test_text_mirror.py`
-
-## Known limitations
-
-- The HTTP handlers are exercised only via unit checks on their helpers, not
-  end-to-end (`/save`/`/crawl` over a live socket) — a live-API test would be the
-  highest-value addition.
-- No pytest integration (single-script harness); porting would enable single-test
-  selection and fixtures.
-- robots.txt behavior is covered by the fail-open unit path only; no fixture server
-  serving actual robots.txt variants.
+No held-out evaluation corpus, benchmark score or promotion surface exists. Ordinary
+unit/smoke checks are the must-pass gate, not an empirical optimization metric. No
+champion is persisted. Real browser installation, private host tool correctness,
+Windows no-follow support, large-site performance and live model/embedding integration
+are not verified by these fixtures. Dependency metadata auditing may access official
+package/advisory services separately from tests.

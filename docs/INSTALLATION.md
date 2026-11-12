@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - macOS or Linux (Windows unverified — see docs/known-issues.md #8)
-- Python ≥ 3.9 with pip
+- Python ≥ 3.11 with pip
 - Chrome (only if you want the extension)
 
 ## Install
@@ -59,3 +59,6 @@ Extension: `chrome://extensions` → reload the unpacked extension.
 Delete the repo clone; remove the unpacked extension in `chrome://extensions`;
 `pip uninstall trafilatura lxml` if you installed them globally. Crawl output lives
 only under your chosen `--out` locations.
+
+
+See [Testing](TESTING.md) for all offline gates and [the wiki](wiki/README.md) for the maintained command index.
